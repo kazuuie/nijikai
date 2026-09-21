@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.min.js';
 import {ORDER,STEP,TAU,DURATION,colorOf,colorNames,randomNumber,createSpin,sampleSpin,pocketAt} from './roulette.js';
+import {RouletteAudio} from './audio.js';
 
 lucide.createIcons();
 const host = document.querySelector('#scene');
@@ -9,6 +10,28 @@ const colorText = document.querySelector('#color-text');
 const status = document.querySelector('#status');
 const dot = document.querySelector('.color-dot');
 const footerState = document.querySelector('#footer-state');
+const sound=new RouletteAudio(failed=>{document.querySelector('#audio-error').hidden=!failed;});
+const muteButton=document.querySelector('#mute');
+const volumeInput=document.querySelector('#volume');
+function updateAudioControls(){
+  const silent=sound.muted||sound.volume===0;
+  muteButton.title=sound.muted?'ミュート解除':'ミュート';
+  muteButton.setAttribute('aria-label',muteButton.title);
+  muteButton.setAttribute('aria-pressed',String(sound.muted));
+  muteButton.innerHTML=`<i data-lucide="${silent?'volume-x':'volume-2'}"></i>`;
+  volumeInput.value=String(Math.round(sound.volume*100));
+  volumeInput.setAttribute('aria-valuetext',`${volumeInput.value}%`);
+  document.querySelector('#volume-value').value=`${volumeInput.value}%`;
+  lucide.createIcons();
+}
+muteButton.addEventListener('click',()=>{
+  sound.setSettings(sound.volume,!sound.muted);updateAudioControls();
+  void sound.prepare();
+});
+volumeInput.addEventListener('input',()=>{
+  sound.setSettings(Number(volumeInput.value)/100,sound.muted);updateAudioControls();
+});
+updateAudioControls();
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
@@ -132,7 +155,8 @@ function render(){if(!contextLost)renderer.render(scene,camera);}
 function setBall(state){wheelAngle=state.wheel;ballAngle=state.angle;wheel.rotation.y=wheelAngle;ball.position.set(state.radius*Math.sin(ballAngle),state.height,state.radius*Math.cos(ballAngle));}
 function tick(now){
   if(!active)return;
-  const state=sampleSpin(active.spin,(now-active.start)/DURATION);setBall(state);render();
+  const progress=(now-active.start)/DURATION;
+  const state=sampleSpin(active.spin,progress);setBall(state);render();sound.update(progress);
   if(state.done){
     const n=active.spin.number;
     if(pocketAt(wheelAngle,ballAngle)!==n)throw new Error('Pocket/result mismatch');
@@ -146,21 +170,27 @@ function tick(now){
     spinButton.disabled=false;spinButton.querySelector('span').textContent='回す';
   }else{frame=requestAnimationFrame(tick);}
 }
-function spin(){
+async function spin(){
   if(active||contextLost||spinButton.disabled)return;
+  spinButton.disabled=true;
+  spinButton.querySelector('span').textContent='準備中';
+  await sound.prepare();
+  if(contextLost)return;
   const n=randomNumber();
   const variation=new Uint32Array(1);crypto.getRandomValues(variation);
   const front=(variation[0]/2**32-.5)*.8;
   active={spin:createSpin(n,wheelAngle,ballAngle,front),start:performance.now()};
+  sound.start();
   document.body.classList.remove('revealed');document.body.classList.add('spinning');
   spinButton.disabled=true;spinButton.querySelector('span').textContent='抽選中';
   numberText.textContent='?';colorText.textContent='';dot.classList.add('neutral');
   status.textContent='幸運の行方は…';footerState.textContent='FINDING YOUR LUCKY NUMBER';
   frame=requestAnimationFrame(tick);
+  if(document.hidden)pauseSpin();
 }
 spinButton.addEventListener('click',spin);
 window.addEventListener('keydown',event=>{
-  if(event.code==='Space'&&!event.repeat&&!['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName)){
+  if(event.code==='Space'&&!event.repeat&&!['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName)&&(!event.target.closest('button')||event.target.closest('button')===spinButton)){
     event.preventDefault();spin();
   }
 });
@@ -175,10 +205,22 @@ document.addEventListener('fullscreenchange',()=>{
   fullscreen.innerHTML=`<i data-lucide="${document.fullscreenElement?'minimize':'maximize'}"></i>`;lucide.createIcons();
 });
 renderer.domElement.addEventListener('webglcontextlost',event=>{
-  event.preventDefault();contextLost=true;cancelAnimationFrame(frame);spinButton.disabled=true;
+  event.preventDefault();contextLost=true;cancelAnimationFrame(frame);spinButton.disabled=true;sound.stop();
   status.textContent='3D表示が中断されました。再読み込みしてください。';
 });
+function pauseSpin(){
+  if(active&&active.paused===undefined){active.paused=performance.now();cancelAnimationFrame(frame);sound.stop();}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){pauseSpin();return;}
+  if(active&&active.paused!==undefined&&!contextLost){
+    active.start+=performance.now()-active.paused;delete active.paused;
+    sound.start((performance.now()-active.start)/DURATION);
+    frame=requestAnimationFrame(tick);
+  }
+});
+window.addEventListener('pagehide',()=>sound.stop());
 document.querySelector('#loading').remove();
 new ResizeObserver(resize).observe(host);resize();spinButton.disabled=false;
 // Read-only scene diagnostics used by the visual verification script.
-window.rouletteSnapshot=()=>({number:lastResult,spinning:!!active,wheel:wheelAngle,ball:ballAngle,pocket:pocketAt(wheelAngle,ballAngle),ballPosition:ball.position.toArray(),round});
+window.rouletteSnapshot=()=>({number:lastResult,spinning:!!active,wheel:wheelAngle,ball:ballAngle,pocket:pocketAt(wheelAngle,ballAngle),ballPosition:ball.position.toArray(),round,audio:sound.snapshot()});

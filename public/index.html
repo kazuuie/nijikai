@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header><a class="brand" href="./"><span class="brand-mark">W<span>R</span></span><span>WEDDING<br><b>ROULETTE</b></span></a><div class="header-right"><span class="edition">A LITTLE LUCK. A SPECIAL NIGHT.</span><button id="fullscreen" class="icon-button" title="フルスクリーン" aria-label="フルスクリーン"><i data-lucide="maximize"></i></button></div></header>
+  <header><a class="brand" href="./"><span class="brand-mark">W<span>R</span></span><span>WEDDING<br><b>ROULETTE</b></span></a><div class="header-right"><span class="edition">A LITTLE LUCK. A SPECIAL NIGHT.</span><div class="audio-controls" role="group" aria-label="効果音"><button id="mute" class="icon-button" title="ミュート" aria-label="ミュート" aria-pressed="false"><i data-lucide="volume-2"></i></button><input id="volume" type="range" min="0" max="100" value="50" step="1" aria-label="効果音の音量"><output id="volume-value" for="volume">50%</output><span id="audio-error" role="status" hidden>音声を読み込めません</span></div><button id="fullscreen" class="icon-button" title="フルスクリーン" aria-label="フルスクリーン"><i data-lucide="maximize"></i></button></div></header>
   <main>
     <div id="scene" aria-label="37ポケットの立体ルーレット"><div id="loading">ルーレットを準備しています</div></div>
     <section class="result-panel">

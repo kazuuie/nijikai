@@ -1,0 +1,135 @@
+import {CAPTURE_PROGRESS,BOUNCE_CONTACTS} from './roulette.js';
+
+// Relative level of rolling and bounce sounds only; wheel/landing/master are independent.
+export const BALL_SOUND_LEVEL = .8;
+export function collisionSound(contact,index) {
+  const nearLanding=Math.abs(contact.progress-CAPTURE_PROGRESS)<.012;
+  return {gain:BALL_SOUND_LEVEL*.24*contact.strength*(nearLanding?.25:1),
+    rate:.94+.12*contact.strength+(index%2?.012:-.012)};
+}
+
+const clamp = value => Math.max(0, Math.min(1, value));
+export function soundAt(progress) {
+  const t = clamp(progress);
+  const wheelSpeed = (1-t)**2;
+  const ballSpeed = Math.max(0, 1-t/CAPTURE_PROGRESS)**2;
+  return {
+    wheelRate:.32+1.08*wheelSpeed,
+    wheelGain:.30*wheelSpeed**.65,
+    ballRate:.28+1.42*ballSpeed,
+    ballGain:t<CAPTURE_PROGRESS ? BALL_SOUND_LEVEL*.44*ballSpeed**.35 : 0,
+  };
+}
+
+export class RouletteAudio {
+  constructor(onError = () => {}) {
+    this.onError=onError;
+    this.volume=.5;
+    this.muted=false;
+    try {
+      const settings=JSON.parse(localStorage.getItem('roulette-audio'));
+      if(settings && Number.isFinite(settings.volume))this.volume=clamp(settings.volume);
+      if(typeof settings?.muted==='boolean')this.muted=settings.muted;
+    } catch {}
+    this.sources=new Set();
+    this.loops=[];
+    this.landed=false;
+    this.landingCount=0;
+    this.collisions=[];
+    this.progress=0;
+  }
+  async prepare() {
+    try {
+      // Called inside the spin/control gesture to satisfy autoplay policies.
+      if(!this.context){
+        this.context=new AudioContext();
+        this.master=this.context.createGain();
+        this.master.gain.value=this.muted?0:this.volume**2;
+        this.master.connect(this.context.destination);
+      }
+      const resumed=this.context.resume();
+      if(!this.loading){
+        this.loading=Promise.all(['wheel','ball','landing','collision'].map(async name=>{
+          const response=await fetch(`./audio/${name}.wav`);
+          if(!response.ok)throw new Error(`Audio load failed: ${name}`);
+          return [name,await this.context.decodeAudioData(await response.arrayBuffer())];
+        })).then(entries=>{this.buffers=Object.fromEntries(entries);});
+      }
+      await Promise.all([resumed,this.loading]);
+      this.onError(false);
+      return true;
+    }catch(error){
+      this.loading=null;
+      this.onError(true);
+      return false;
+    }
+  }
+  setSettings(volume,muted) {
+    this.volume=clamp(volume);this.muted=muted;
+    if(this.master)this.master.gain.setTargetAtTime(muted?0:this.volume**2,this.context.currentTime,.015);
+    try{localStorage.setItem('roulette-audio',JSON.stringify({volume:this.volume,muted}));}catch{}
+  }
+  source(name,loop,gainValue) {
+    const source=this.context.createBufferSource();
+    const gain=this.context.createGain();
+    source.buffer=this.buffers[name];source.loop=loop;gain.gain.value=gainValue;
+    source.connect(gain);gain.connect(this.master);
+    const voice={source,gain};this.sources.add(voice);
+    source.onended=()=>{source.disconnect();gain.disconnect();this.sources.delete(voice);};
+    return voice;
+  }
+  start(progress=0) {
+    this.stop();
+    if(progress===0){this.landed=false;this.landingCount=0;this.collisions=[];}
+    this.progress=progress;
+    if(!this.buffers||this.context.state!=='running')return;
+    this.loops=['wheel','ball'].map(name=>this.source(name,true,0));
+    const state=soundAt(progress);
+    this.loops[0].source.playbackRate.value=state.wheelRate;
+    this.loops[1].source.playbackRate.value=state.ballRate;
+    for(const voice of this.loops)voice.source.start();
+    this.update(progress);
+  }
+  update(progress) {
+    const previous=this.progress;
+    this.progress=clamp(progress);
+    if(!this.loops.length)return;
+    if(progress>=1){this.stop();return;}
+    const state=soundAt(progress),now=this.context.currentTime;
+    for(const [i,name] of ['wheel','ball'].entries()){
+      this.loops[i].source.playbackRate.setTargetAtTime(state[`${name}Rate`],now,.025);
+      this.loops[i].gain.gain.setTargetAtTime(state[`${name}Gain`],now,.025);
+    }
+    // These are the zero-height contacts of the exact bounce curve used on screen.
+    // Skip old contacts after a stalled frame instead of playing a burst of catch-up sounds.
+    BOUNCE_CONTACTS.forEach((contact,index)=>{
+      if(contact.progress>previous&&contact.progress<=progress&&progress-contact.progress<.012){
+        const {gain,rate}=collisionSound(contact,index);
+        const impact=this.source('collision',false,gain);
+        impact.source.playbackRate.value=rate;impact.source.start();
+        this.collisions.push({progress:contact.progress,playedAt:progress,gain,rate});
+      }
+    });
+    if(progress>=CAPTURE_PROGRESS&&!this.landed){
+      this.landed=true;
+      // Do not replay a stale impact after a hidden/stalled browser tab resumes.
+      if(progress<CAPTURE_PROGRESS+.045){
+        const impact=this.source('landing',false,.8);impact.source.start();this.landingCount++;
+      }
+    }
+  }
+  stop() {
+    if(!this.context)return;
+    const now=this.context.currentTime;
+    for(const voice of this.sources){
+      voice.gain.gain.cancelScheduledValues(now);
+      voice.gain.gain.setTargetAtTime(0,now,.008);
+      voice.source.stop(now+.04);
+    }
+    this.sources.clear();this.loops=[];
+  }
+  snapshot() {
+    return {ready:!!this.buffers,state:this.context?.state,volume:this.volume,muted:this.muted,masterGain:this.master?.gain.value,
+      loops:this.loops.length,landingCount:this.landingCount,collisions:[...this.collisions],progress:this.progress,...soundAt(this.progress)};
+  }
+}
