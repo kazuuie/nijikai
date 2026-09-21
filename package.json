@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {"test": "node --test tests/roulette.test.mjs"},
+  "devDependencies": {"@playwright/test": "1.55.0", "three": "0.180.0", "lucide": "0.468.0"}
+}

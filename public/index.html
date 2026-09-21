@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d11">
+  <title>Wedding Roulette</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header><a class="brand" href="./"><span class="brand-mark">W<span>R</span></span><span>WEDDING<br><b>ROULETTE</b></span></a><div class="header-right"><span class="edition">A LITTLE LUCK. A SPECIAL NIGHT.</span><button id="fullscreen" class="icon-button" title="フルスクリーン" aria-label="フルスクリーン"><i data-lucide="maximize"></i></button></div></header>
+  <main>
+    <div id="scene" aria-label="37ポケットの立体ルーレット"><div id="loading">ルーレットを準備しています</div></div>
+    <section class="result-panel">
+      <div class="eyebrow"><span></span> THE LUCKY NUMBER</div>
+      <div id="result" role="status" aria-live="polite" aria-atomic="true">
+        <div id="status">今夜の運を、この一球に。</div>
+        <div id="number">?</div>
+        <div id="color"><span class="color-dot neutral"></span><span id="color-text">幸運のひとときを</span></div>
+      </div>
+      <div class="result-divider"></div>
+      <button id="spin" disabled><i data-lucide="rotate-cw"></i><span>回す</span><i data-lucide="arrow-up-right" class="button-arrow"></i></button>
+      <div class="round"><span>EUROPEAN ROULETTE</span><span id="round">37 POCKETS</span></div>
+    </section>
+    <div class="wheel-caption"><span class="caption-line"></span><span>LET THE GOOD TIMES ROLL</span><span class="caption-line"></span></div>
+  </main>
+  <footer><span>TO LOVE, LAUGHTER & A LITTLE LUCK.</span><div><span class="live-dot"></span><span id="footer-state">READY FOR YOUR MOMENT</span></div><span class="footer-end">00 — 36 <b> / </b> ONE LUCKY NUMBER</span></footer>
+  <script src="vendor/lucide.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
