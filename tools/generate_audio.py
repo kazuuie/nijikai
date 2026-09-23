@@ -94,6 +94,12 @@ def main():
                 value += envelope*chord+drum
         grand.append(math.tanh(value*.35)*min(1,(3.8-t)/.2))
     write("grand.wav", grand, .88)
+    welcome = []
+    for i in range(round(RATE * .8)):
+        t = i/RATE
+        envelope = min(1,t/.018)*math.exp(-t*5)*min(1,(.8-t)/.12)
+        welcome.append(envelope*(math.sin(math.tau*783.99*t)+.45*math.sin(math.tau*1174.66*t)))
+    write("welcome.wav", welcome, .6)
 
 
 if __name__ == "__main__":

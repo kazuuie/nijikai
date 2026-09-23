@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {enterGame} from './start-game.mjs';
 
 const browser=await chromium.launch({...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
@@ -15,6 +16,7 @@ try{
   await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.goto('http://localhost:8000');
   await page.waitForFunction(()=>window.rouletteSnapshot);
+  await enterGame(page);
   await mkdir('artifacts',{recursive:true});
   const ready=await page.screenshot({path:'artifacts/desktop-ready.png'});
   const pixelStats=await page.evaluate(async encoded=>{

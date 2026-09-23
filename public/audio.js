@@ -39,6 +39,7 @@ export class RouletteAudio {
     this.tier='ume';
     this.flourishCount=0;
     this.surgeCount=0;
+    this.welcomeCount=0;
   }
   async prepare() {
     try {
@@ -51,7 +52,7 @@ export class RouletteAudio {
       }
       const resumed=this.context.resume();
       if(!this.loading){
-        this.loading=Promise.all(['wheel','ball','collision','suspense','celebration','surge','grand'].map(async name=>{
+        this.loading=Promise.all(['wheel','ball','collision','suspense','celebration','surge','grand','welcome'].map(async name=>{
           const response=await fetch(`./audio/${name}.wav`);
           if(!response.ok)throw new Error(`Audio load failed: ${name}`);
           return [name,await this.context.decodeAudioData(await response.arrayBuffer())];
@@ -70,6 +71,10 @@ export class RouletteAudio {
     this.volume=clamp(volume);this.muted=muted;
     if(this.master)this.master.gain.setTargetAtTime(muted?0:this.volume**2,this.context.currentTime,.015);
     try{localStorage.setItem('roulette-audio',JSON.stringify({volume:this.volume,muted}));}catch{}
+  }
+  playWelcome(){
+    if(!this.buffers||this.context.state!=='running'||this.welcomeCount)return;
+    const voice=this.source('welcome',false,.22);voice.source.start();this.welcomeCount++;
   }
   source(name,loop,gainValue) {
     const source=this.context.createBufferSource();
@@ -148,7 +153,7 @@ export class RouletteAudio {
   }
   snapshot() {
     return {ready:!!this.buffers,state:this.context?.state,volume:this.volume,muted:this.muted,masterGain:this.master?.gain.value,
-      tier:this.tier,special:this.special,flourishCount:this.flourishCount,surgeCount:this.surgeCount,suspense:!!this.suspense,
+      welcomeCount:this.welcomeCount,tier:this.tier,special:this.special,flourishCount:this.flourishCount,surgeCount:this.surgeCount,suspense:!!this.suspense,
       loops:this.loops.length,collisions:[...this.collisions],progress:this.progress,...soundAt(this.progress)};
   }
 }

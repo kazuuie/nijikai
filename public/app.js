@@ -11,6 +11,10 @@ const status = document.querySelector('#status');
 const dot = document.querySelector('.color-dot');
 const footerState = document.querySelector('#footer-state');
 const sound=new RouletteAudio(failed=>{document.querySelector('#audio-error').hidden=!failed;});
+let screenState='title';
+let titleFrame=0;
+const startButton=document.querySelector('#start');
+const titleScreen=document.querySelector('#title-screen');
 const muteButton=document.querySelector('#mute');
 const volumeInput=document.querySelector('#volume');
 function updateAudioControls(){
@@ -59,6 +63,7 @@ try {
   renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
 } catch (error) {
   document.querySelector('#loading').textContent = '3D表示を開始できません。Chrome / Edge のハードウェア アクセラレーションを有効にして、再読み込みしてください。';
+  const notice=document.querySelector('#title-error');notice.hidden=false;notice.textContent=document.querySelector('#loading').textContent;
   throw error;
 }
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -263,7 +268,7 @@ function tick(now){
   }else{frame=requestAnimationFrame(tick);}
 }
 async function spin(){
-  if(active||contextLost||spinButton.disabled)return;
+  if(screenState!=='game'||active||contextLost||spinButton.disabled)return;
   spinButton.disabled=true;
   specialButton.disabled=true;
   spinButton.querySelector('span').textContent='準備中';
@@ -287,6 +292,10 @@ async function spin(){
 }
 spinButton.addEventListener('click',spin);
 window.addEventListener('keydown',event=>{
+  if(screenState!=='game'){
+    if(event.code==='Space'||event.code==='Enter'){event.preventDefault();if(!event.repeat)startGame();}
+    return;
+  }
   if(event.code==='Space'&&!event.repeat&&!['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName)&&(!event.target.closest('button')||event.target.closest('button')===spinButton)){
     event.preventDefault();spin();
   }
@@ -303,6 +312,8 @@ document.addEventListener('fullscreenchange',()=>{
 });
 renderer.domElement.addEventListener('webglcontextlost',event=>{
   event.preventDefault();contextLost=true;cancelAnimationFrame(frame);spinButton.disabled=true;sound.stop();
+  cancelAnimationFrame(titleFrame);
+  if(screenState==='title'){const notice=document.querySelector('#title-error');notice.hidden=false;notice.textContent='3D表示が中断されました。再読み込みしてください。';startButton.disabled=true;}
   status.textContent='3D表示が中断されました。再読み込みしてください。';
 });
 function pauseSpin(){
@@ -319,5 +330,28 @@ document.addEventListener('visibilitychange',()=>{
 window.addEventListener('pagehide',()=>sound.stop());
 document.querySelector('#loading').remove();
 new ResizeObserver(resize).observe(host);resize();spinButton.disabled=false;
+let lastTitleDraw=0;
+function animateTitle(now){
+  if(screenState!=='title')return;
+  if(now-lastTitleDraw>50){
+    if(!matchMedia('(prefers-reduced-motion: reduce)').matches)wheel.rotation.y=now*.000035;
+    render();lastTitleDraw=now;
+  }
+  titleFrame=requestAnimationFrame(animateTitle);
+}
+function startGame(){
+  if(screenState!=='title'||startButton.disabled||contextLost)return;
+  screenState='entering';startButton.disabled=true;cancelAnimationFrame(titleFrame);
+  document.body.dataset.screen='entering';
+  void sound.prepare().then(ready=>{if(ready&&screenState==='entering')sound.playWelcome();});
+  wheel.rotation.y=wheelAngle;resize();
+  setTimeout(()=>{
+    screenState='game';document.body.dataset.screen='game';titleScreen.hidden=true;
+    document.querySelectorAll('header,main,footer').forEach(element=>{element.inert=false;});
+    document.querySelector('main').focus({preventScroll:true});resize();
+  },1000);
+}
+startButton.disabled=false;startButton.addEventListener('click',startGame);
+titleFrame=requestAnimationFrame(animateTitle);
 // Read-only scene diagnostics used by the visual verification script.
-window.rouletteSnapshot=()=>({number:lastResult,spinning:!!active,effectTier,specialEnabled,duration:active?.duration,wheel:wheelAngle,ball:ballAngle,pocket:pocketAt(wheelAngle,ballAngle),ballPosition:ball.position.toArray(),round,audio:sound.snapshot()});
+window.rouletteSnapshot=()=>({screenState,number:lastResult,spinning:!!active,effectTier,specialEnabled,duration:active?.duration,wheel:wheelAngle,ball:ballAngle,pocket:pocketAt(wheelAngle,ballAngle),ballPosition:ball.position.toArray(),round,audio:sound.snapshot()});

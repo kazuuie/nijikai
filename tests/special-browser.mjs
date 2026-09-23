@@ -1,6 +1,7 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {mkdir} from 'node:fs/promises';
+import {enterGame} from './start-game.mjs';
 const browser=await chromium.launch({...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
   const page=await browser.newPage({viewport:{width:1920,height:1080}});
@@ -8,8 +9,11 @@ try{
   await page.route('**/*',r=>new URL(r.request().url()).hostname==='localhost'?r.continue():r.abort());
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.goto('http://localhost:8000/?v=special');await page.waitForFunction(()=>window.rouletteSnapshot);
+  await enterGame(page);
+  await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/title-to-game.png'});
   assert.equal(await page.locator('button[data-tier="ume"]').getAttribute('aria-pressed'),'true');
   await page.locator('button[data-tier="take"]').click();await page.reload();await page.waitForFunction(()=>window.rouletteSnapshot);
+  await enterGame(page);
   assert.equal(await page.locator('button[data-tier="take"]').getAttribute('aria-pressed'),'true');
   const levels=await page.evaluate(async()=>{
     const out=[];
@@ -61,6 +65,7 @@ try{
   assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('special-result')),false);
   await page.setViewportSize({width:1920,height:1080});
   await page.locator('button[data-tier="matsu"]').click();await page.reload();await page.waitForFunction(()=>window.rouletteSnapshot);
+  await enterGame(page);
   assert.equal((await page.evaluate(()=>rouletteSnapshot())).effectTier,'matsu');
   await page.evaluate(()=>{crypto.getRandomValues=a=>{a.fill(17);return a;};});
   await page.locator('#spin').click();await page.waitForFunction(()=>rouletteSnapshot().spinning);
