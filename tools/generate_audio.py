@@ -35,16 +35,9 @@ def main():
                                + .07 * math.sin(math.tau * 2232 * t)))
     write("wheel.wav", wheel, .65)
     write("ball.wav", ball, .72)
-    impact = []
-    for i in range(round(RATE * .23)):
-        t = i / RATE
-        attack = min(1, t / .001)
-        tail = min(1, (.23-t) / .025)
-        impact.append(attack * tail * (
-            .48 * math.exp(-t * 40) * math.sin(math.tau * 780 * t)
-            + .24 * math.exp(-t * 57) * math.sin(math.tau * 1837 * t)
-            + .21 * math.exp(-t * 160) * rng.uniform(-1, 1)))
-    write("landing.wav", impact, .85)
+    # Preserve the existing collision noise sequence when regenerating assets.
+    for _ in range(round(RATE * .23)):
+        rng.uniform(-1, 1)
     collision = []
     for i in range(round(RATE * .075)):
         t = i / RATE

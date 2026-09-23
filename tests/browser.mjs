@@ -28,7 +28,7 @@ try{
   assert.ok(pixelStats.bright>10000&&pixelStats.red>10000,'3D canvas must contain lit surfaces and red pockets');
   const audioFiles=await page.evaluate(async()=>{
     const result=[];
-    for(const name of ['wheel','ball','landing','collision']){
+    for(const name of ['wheel','ball','collision']){
       const ctx=new OfflineAudioContext(1,44100,44100);
       const response=await fetch(`audio/${name}.wav`);
       const buffer=await ctx.decodeAudioData(await response.arrayBuffer());
@@ -39,7 +39,7 @@ try{
     return result;
   });
   assert.ok(audioFiles.every(file=>file.rms>.01));
-  assert.ok(audioFiles.find(file=>file.name==='landing').duration<.3);
+  assert.ok(audioFiles.find(file=>file.name==='collision').duration<.3);
   console.log('Decoded and rendered local WAVs:',audioFiles);
   for(const [n,color] of [[17,'黒'],[0,'緑'],[32,'赤']]){
     await page.evaluate(n=>{crypto.getRandomValues=a=>{a.fill(n);return a;};},n);
@@ -72,12 +72,11 @@ try{
     }
     if(n===17){const moving=await page.screenshot({path:'artifacts/desktop-spinning.png'});assert.notDeepEqual(moving,ready);}
     await page.clock.fastForward(2900);
-    assert.equal((await page.evaluate(()=>rouletteSnapshot().audio)).landingCount,1);
     if(n===17)await page.screenshot({path:'artifacts/desktop-landing.png'});
     await page.clock.fastForward(1800);
     const result=await page.evaluate(()=>rouletteSnapshot());
     assert.equal(result.number,n);assert.equal(result.pocket,n);assert.equal(result.spinning,false);
-    assert.equal(result.audio.loops,0);assert.equal(result.audio.landingCount,1);
+    assert.equal(result.audio.loops,0);
     assert.equal(await page.locator('#number').textContent(),String(n));
     assert.equal(await page.locator('#color-text').textContent(),color);
     assert.equal(await page.locator('#spin').isDisabled(),false);

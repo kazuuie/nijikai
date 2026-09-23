@@ -5,12 +5,18 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
+class AppHandler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Wedding roulette")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
     root = Path(__file__).resolve().parent / "public"
-    handler = partial(SimpleHTTPRequestHandler, directory=str(root))
+    handler = partial(AppHandler, directory=str(root))
     try:
         server = ThreadingHTTPServer(("0.0.0.0", args.port), handler)
     except OSError as error:

@@ -46,17 +46,22 @@ test('Both layers slow down and fade with animation; rolling ends at capture',()
   assert.equal(soundAt(1).wheelGain,0);
 });
 
-test('Impact fires once at capture, stops cleanly, and is not replayed after a skipped finish',()=>{
+test('Capture adds no dedicated landing sound and playback stops cleanly',()=>{
   const engine=new RouletteAudio();
   const param=()=>({value:0,setTargetAtTime(){},cancelScheduledValues(){}});
   engine.context={state:'running',currentTime:0};engine.buffers={};
-  engine.source=()=>{
+  const names=[];
+  engine.source=(name)=>{
+    names.push(name);
     const voice={source:{playbackRate:param(),start(){},stop(){}},gain:{gain:param()}};
     engine.sources.add(voice);return voice;
   };
-  engine.start();engine.update(CAPTURE_PROGRESS-.001);assert.equal(engine.landingCount,0);
-  engine.update(CAPTURE_PROGRESS);engine.update(CAPTURE_PROGRESS+.01);assert.equal(engine.landingCount,1);
-  engine.stop();engine.start(CAPTURE_PROGRESS+.02);assert.equal(engine.landingCount,1);
+  engine.start();engine.update(CAPTURE_PROGRESS-.001);
+  const before=names.length;
+  engine.update(CAPTURE_PROGRESS);engine.update(CAPTURE_PROGRESS+.01);
+  assert.equal(names.length,before);
+  assert.ok(names.every(name=>['wheel','ball','collision'].includes(name)));
+  engine.stop();engine.start(CAPTURE_PROGRESS+.02);
   engine.update(1);assert.equal(engine.sources.size,0);assert.equal(engine.loops.length,0);
-  engine.start();engine.update(1);assert.equal(engine.landingCount,0);
+  engine.start();engine.update(1);assert.equal(engine.sources.size,0);
 });

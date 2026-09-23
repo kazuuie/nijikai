@@ -1,10 +1,10 @@
 import {CAPTURE_PROGRESS,BOUNCE_CONTACTS} from './roulette.js';
 
-// Relative level of rolling and bounce sounds only; wheel/landing/master are independent.
+// Relative level of rolling and bounce sounds only; wheel/master are independent.
 export const BALL_SOUND_LEVEL = .8;
 export function collisionSound(contact,index) {
-  const nearLanding=Math.abs(contact.progress-CAPTURE_PROGRESS)<.012;
-  return {gain:BALL_SOUND_LEVEL*.24*contact.strength*(nearLanding?.25:1),
+  const nearCapture=Math.abs(contact.progress-CAPTURE_PROGRESS)<.012;
+  return {gain:BALL_SOUND_LEVEL*.24*contact.strength*(nearCapture?.25:1),
     rate:.94+.12*contact.strength+(index%2?.012:-.012)};
 }
 
@@ -33,8 +33,6 @@ export class RouletteAudio {
     } catch {}
     this.sources=new Set();
     this.loops=[];
-    this.landed=false;
-    this.landingCount=0;
     this.collisions=[];
     this.progress=0;
   }
@@ -49,7 +47,7 @@ export class RouletteAudio {
       }
       const resumed=this.context.resume();
       if(!this.loading){
-        this.loading=Promise.all(['wheel','ball','landing','collision'].map(async name=>{
+        this.loading=Promise.all(['wheel','ball','collision'].map(async name=>{
           const response=await fetch(`./audio/${name}.wav`);
           if(!response.ok)throw new Error(`Audio load failed: ${name}`);
           return [name,await this.context.decodeAudioData(await response.arrayBuffer())];
@@ -80,7 +78,7 @@ export class RouletteAudio {
   }
   start(progress=0) {
     this.stop();
-    if(progress===0){this.landed=false;this.landingCount=0;this.collisions=[];}
+    if(progress===0)this.collisions=[];
     this.progress=progress;
     if(!this.buffers||this.context.state!=='running')return;
     this.loops=['wheel','ball'].map(name=>this.source(name,true,0));
@@ -110,13 +108,6 @@ export class RouletteAudio {
         this.collisions.push({progress:contact.progress,playedAt:progress,gain,rate});
       }
     });
-    if(progress>=CAPTURE_PROGRESS&&!this.landed){
-      this.landed=true;
-      // Do not replay a stale impact after a hidden/stalled browser tab resumes.
-      if(progress<CAPTURE_PROGRESS+.045){
-        const impact=this.source('landing',false,.8);impact.source.start();this.landingCount++;
-      }
-    }
   }
   stop() {
     if(!this.context)return;
@@ -130,6 +121,6 @@ export class RouletteAudio {
   }
   snapshot() {
     return {ready:!!this.buffers,state:this.context?.state,volume:this.volume,muted:this.muted,masterGain:this.master?.gain.value,
-      loops:this.loops.length,landingCount:this.landingCount,collisions:[...this.collisions],progress:this.progress,...soundAt(this.progress)};
+      loops:this.loops.length,collisions:[...this.collisions],progress:this.progress,...soundAt(this.progress)};
   }
 }

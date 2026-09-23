@@ -163,7 +163,7 @@ function tick(now){
     lastResult=n;active=null;round++;
     numberText.textContent=String(n);colorText.textContent=colorNames[colorOf(n)];
     dot.classList.remove('neutral');dot.style.setProperty('--result-color',{red:'#d2344a',black:'#121a20',green:'#39c59d'}[colorOf(n)]);
-    status.textContent='おめでとうございます';
+    status.textContent='結果は';
     document.body.classList.remove('spinning');document.body.classList.add('revealed');
     document.querySelector('#round').textContent=`ROUND ${String(round).padStart(2,'0')}`;
     footerState.textContent='A LUCKY MOMENT TO REMEMBER';
