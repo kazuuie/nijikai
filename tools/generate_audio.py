@@ -46,6 +46,54 @@ def main():
                                     + .18 * math.sin(math.tau * 1715 * t)
                                     + .08 * rng.uniform(-1, 1)))
     write("collision.wav", collision, .65)
+    suspense = []
+    notes = [523.25, 659.25, 783.99, 1046.5]
+    for i in range(RATE * 2):
+        t = i / RATE
+        step = int(t * 8)
+        local = t % .125
+        envelope = min(1, local / .004) * math.exp(-local * 30)
+        frequency = notes[step % 4]
+        suspense.append(envelope * (math.sin(math.tau * frequency * local)
+                                    + .15 * math.sin(math.tau * frequency * 2 * local)))
+    write("suspense.wav", suspense, .60)
+    celebration = []
+    for i in range(round(RATE * 2.4)):
+        t = i / RATE
+        value = 0
+        for start, frequencies in [(0, [523.25, 659.25]), (.16, [659.25, 783.99]),
+                                   (.32, [783.99, 1046.5]), (.50, [523.25, 659.25, 783.99, 1046.5])]:
+            age = t-start
+            if age >= 0:
+                envelope = min(1, age/.008) * math.exp(-age*2.8)
+                value += envelope * sum(math.sin(math.tau*f*age)+.18*math.sin(math.tau*f*2*age) for f in frequencies)
+        celebration.append(value * min(1, (2.4-t)/.1))
+    write("celebration.wav", celebration, .75)
+    surge = []
+    phase = 0
+    for i in range(round(RATE * .95)):
+        t = i / RATE
+        frequency = 160 + 1650 * (t/.95)**1.5
+        phase += math.tau * frequency / RATE
+        envelope = min(1, t/.025) * min(1, (.95-t)/.17)
+        carrier = math.sin(phase + 1.8*math.sin(phase*.5))
+        harmonics = .24*math.sin(phase*2.01) + .12*math.sin(phase*3)
+        surge.append(envelope * math.tanh(1.6*(carrier+harmonics)) * (.85+.15*math.sin(math.tau*23*t)))
+    write("surge.wav", surge, .70)
+    grand = []
+    for i in range(round(RATE * 3.8)):
+        t = i / RATE
+        value = 0
+        for start, root in [(0, 130.81), (.18, 164.81), (.36, 196.0), (.72, 130.81)]:
+            age = t-start
+            if age >= 0:
+                envelope = min(1, age/.005)*math.exp(-age*(2.7 if start<.72 else 1.5))
+                chord = sum(math.sin(math.tau*root*ratio*age)+.3*math.sin(math.tau*root*ratio*2*age)
+                            for ratio in [1, 1.25, 1.5, 2, 4])
+                drum = 2*math.exp(-age*18)*math.sin(math.tau*(65*age+1.8*(1-math.exp(-age*30))))
+                value += envelope*chord+drum
+        grand.append(math.tanh(value*.35)*min(1,(3.8-t)/.2))
+    write("grand.wav", grand, .88)
 
 
 if __name__ == "__main__":

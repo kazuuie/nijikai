@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.min.js';
-import {ORDER,STEP,TAU,DURATION,colorOf,colorNames,randomNumber,createSpin,sampleSpin,pocketAt} from './roulette.js';
+import {ORDER,STEP,TAU,EFFECTS,colorOf,colorNames,randomNumber,createSpin,sampleSpin,pocketAt} from './roulette.js';
 import {RouletteAudio} from './audio.js';
 
 lucide.createIcons();
@@ -32,6 +32,28 @@ volumeInput.addEventListener('input',()=>{
   sound.setSettings(Number(volumeInput.value)/100,sound.muted);updateAudioControls();
 });
 updateAudioControls();
+let effectTier='ume';
+try{const saved=localStorage.getItem('roulette-tier');effectTier=Object.hasOwn(EFFECTS,saved)?saved:localStorage.getItem('roulette-special')==='true'?'take':'ume';}catch{}
+let specialEnabled=effectTier!=='ume';
+const specialButton=document.createElement('fieldset');
+specialButton.id='special';specialButton.className='effect-selector';
+specialButton.setAttribute('aria-label','演出の強さ');
+specialButton.innerHTML=Object.entries(EFFECTS).map(([id,mode])=>`<button type="button" data-tier="${id}" title="${mode.label}：${id==='ume'?'通常':id==='take'?'特別演出':'最上位演出'}">${mode.label}</button>`).join('');
+document.querySelector('.header-right').prepend(specialButton);
+function updateSpecialControl(){
+  specialEnabled=effectTier!=='ume';
+  specialButton.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.tier===effectTier)));
+  document.body.dataset.tier=effectTier;
+  document.body.classList.toggle('special-enabled',specialEnabled);
+}
+specialButton.addEventListener('click',event=>{
+  const tier=event.target.closest('button')?.dataset.tier;
+  if(!tier||specialButton.disabled||effectTier===tier)return;
+  effectTier=tier;updateSpecialControl();
+  sound.stop();document.body.classList.remove('special-result','special-round','special-suspense');clearCelebration();clearGrand();resetLighting();render();
+  try{localStorage.setItem('roulette-tier',effectTier);}catch{}
+});
+updateSpecialControl();lucide.createIcons();
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
@@ -141,9 +163,68 @@ for(let i=0;i<4;i++){
 const ball=mesh(new THREE.SphereGeometry(.139,32,24),mat('#fff8e8',.28,.16));
 ball.position.set(4.57*Math.sin(-.65),.91,4.57*Math.cos(-.65));
 const floor=mesh(new THREE.PlaneGeometry(200,200),new THREE.ShadowMaterial({opacity:.32}));floor.rotation.x=-Math.PI/2;floor.position.y=-.69;floor.castShadow=false;
+const specialHalo=new THREE.Group();scene.add(specialHalo);specialHalo.visible=false;
+const haloMaterial=mat('#b88927',.65,.25,{emissive:'#ff9e21',emissiveIntensity:1.2});
+ring(5.43,.042,.08,haloMaterial,specialHalo);ring(5.62,.022,.08,haloMaterial,specialHalo);
+for(let i=0;i<48;i++){
+  const a=i*TAU/48;
+  const gem=mesh(new THREE.OctahedronGeometry(.067),haloMaterial,specialHalo);
+  gem.position.set(5.53*Math.sin(a),.08,5.53*Math.cos(a));gem.castShadow=false;
+}
 
 let active=null,wheelAngle=0,ballAngle=-.65,round=0,frame=0,contextLost=false;
 let lastResult=null;
+const celebration=document.querySelector('#celebration');
+const specialBanner=document.querySelector('#special-banner');
+const grandStage=document.querySelector('#grand-stage');
+let grandTimer;
+function clearGrand(){clearTimeout(grandTimer);document.body.classList.remove('grand-reveal');}
+function grandReveal(number){
+  clearGrand();
+  grandStage.querySelectorAll('.grand-numbers span').forEach(span=>{span.textContent=String(number);});
+  grandStage.querySelector('.grand-color').textContent=colorNames[colorOf(number)];
+  document.body.classList.add('grand-reveal');
+  grandTimer=setTimeout(clearGrand,4400);
+}
+let celebrationTimer;
+function clearCelebration(){clearTimeout(celebrationTimer);celebration.replaceChildren();}
+function celebrate(){
+  clearCelebration();
+  (effectTier==='matsu'?grandStage:document.querySelector('main')).appendChild(celebration);
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+    for(let i=0;i<(effectTier==='matsu'?180:108);i++){
+      const ribbon=document.createElement('span');
+      ribbon.style.setProperty('--x',`${(i*37)%100}%`);
+      ribbon.style.setProperty('--drift',`${(i%7-3)*35}px`);
+      ribbon.style.setProperty('--delay',`${(i%9)*.045}s`);
+      ribbon.style.setProperty('--turn',`${180+i*31}deg`);
+      ribbon.style.background=['#f1d480','#ee778d','#67e6d3','#f9f4da'][i%4];
+      celebration.appendChild(ribbon);
+    }
+    celebrationTimer=setTimeout(clearCelebration,4000);
+  }
+}
+function resetLighting(){teal.color.set('#0a8579');teal.emissive.set('#16cbb1');teal.emissiveIntensity=.8;fill.color.set(0x70ffeb);fill.intensity=35;specialHalo.visible=false;document.body.classList.remove('special-kick');specialBanner.querySelector('b').textContent='CHANCE';}
+function specialLighting(progress){
+  const pulse=.5+.5*Math.sin(progress*TAU*12);
+  specialHalo.visible=true;specialHalo.rotation.y=progress*TAU*.8;
+  const surges=EFFECTS[effectTier].surges;
+  const surge=surges.filter(at=>at<=progress).length;
+  const since=surge?progress-surges[surge-1]:1;
+  const kick=since<.04;
+  document.body.classList.toggle('special-kick',kick);
+  specialBanner.querySelectorAll('i').forEach((light,i)=>light.classList.toggle('lit',i<surge));
+  haloMaterial.emissiveIntensity=kick?2.8:1.1+pulse*.5;
+  teal.color.set('#c29b3f');teal.emissive.set('#ffc65a');
+  teal.emissiveIntensity=kick?2.5:.8+pulse*.9;
+  fill.color.set(kick?'#ff6957':'#ffd79a');fill.intensity=kick?65:25+pulse*15;
+  if(effectTier==='matsu'){
+    haloMaterial.emissive.setHSL((progress*1.8)%1,.85,.55);
+    haloMaterial.emissiveIntensity=kick?3.5:1.8;
+    teal.emissiveIntensity=kick?3:1.5+pulse;
+    specialHalo.rotation.y=progress*TAU*1.5;
+  }else haloMaterial.emissive.set('#ff9e21');
+}
 function resize(){
   const {width,height}=host.getBoundingClientRect();
   renderer.setSize(width,height);camera.aspect=width/height;
@@ -155,32 +236,48 @@ function render(){if(!contextLost)renderer.render(scene,camera);}
 function setBall(state){wheelAngle=state.wheel;ballAngle=state.angle;wheel.rotation.y=wheelAngle;ball.position.set(state.radius*Math.sin(ballAngle),state.height,state.radius*Math.cos(ballAngle));}
 function tick(now){
   if(!active)return;
-  const progress=(now-active.start)/DURATION;
+  const progress=(now-active.start)/active.duration;
+  if(active.special){
+    specialLighting(progress);
+    document.body.classList.toggle('special-suspense',progress>(active.tier==='matsu'?.42:.60)&&progress<1);
+    if(progress>.82)status.textContent='運命の一球…';
+    else if(progress>.60)status.textContent='まだ、まだ…';
+  }
   const state=sampleSpin(active.spin,progress);setBall(state);render();sound.update(progress);
   if(state.done){
     const n=active.spin.number;
+    const special=active.special;
     if(pocketAt(wheelAngle,ballAngle)!==n)throw new Error('Pocket/result mismatch');
     lastResult=n;active=null;round++;
     numberText.textContent=String(n);colorText.textContent=colorNames[colorOf(n)];
     dot.classList.remove('neutral');dot.style.setProperty('--result-color',{red:'#d2344a',black:'#121a20',green:'#39c59d'}[colorOf(n)]);
     status.textContent='結果は';
     document.body.classList.remove('spinning');document.body.classList.add('revealed');
+    document.body.classList.remove('special-suspense','special-kick');
+    document.body.classList.toggle('special-result',special);
+    if(special){specialBanner.querySelector('b').textContent=effectTier==='matsu'?'GLORIOUS!':'LUCKY!';celebrate();if(effectTier==='matsu')grandReveal(n);}
     document.querySelector('#round').textContent=`ROUND ${String(round).padStart(2,'0')}`;
     footerState.textContent='A LUCKY MOMENT TO REMEMBER';
     spinButton.disabled=false;spinButton.querySelector('span').textContent='回す';
+    specialButton.disabled=false;
   }else{frame=requestAnimationFrame(tick);}
 }
 async function spin(){
   if(active||contextLost||spinButton.disabled)return;
   spinButton.disabled=true;
+  specialButton.disabled=true;
   spinButton.querySelector('span').textContent='準備中';
   await sound.prepare();
   if(contextLost)return;
   const n=randomNumber();
   const variation=new Uint32Array(1);crypto.getRandomValues(variation);
   const front=(variation[0]/2**32-.5)*.8;
-  active={spin:createSpin(n,wheelAngle,ballAngle,front),start:performance.now()};
-  sound.start();
+  clearCelebration();clearGrand();resetLighting();
+  specialBanner.querySelector('div').innerHTML=EFFECTS[effectTier].surges.map(()=>'<i></i>').join('');
+  active={spin:createSpin(n,wheelAngle,ballAngle,front,effectTier==='matsu'?'matsu':specialEnabled),start:performance.now(),special:specialEnabled,tier:effectTier,duration:EFFECTS[effectTier].duration};
+  sound.start(0,effectTier);
+  document.body.classList.remove('special-result','special-suspense');
+  document.body.classList.toggle('special-round',specialEnabled);
   document.body.classList.remove('revealed');document.body.classList.add('spinning');
   spinButton.disabled=true;spinButton.querySelector('span').textContent='抽選中';
   numberText.textContent='?';colorText.textContent='';dot.classList.add('neutral');
@@ -215,7 +312,7 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden){pauseSpin();return;}
   if(active&&active.paused!==undefined&&!contextLost){
     active.start+=performance.now()-active.paused;delete active.paused;
-    sound.start((performance.now()-active.start)/DURATION);
+    sound.start((performance.now()-active.start)/active.duration);
     frame=requestAnimationFrame(tick);
   }
 });
@@ -223,4 +320,4 @@ window.addEventListener('pagehide',()=>sound.stop());
 document.querySelector('#loading').remove();
 new ResizeObserver(resize).observe(host);resize();spinButton.disabled=false;
 // Read-only scene diagnostics used by the visual verification script.
-window.rouletteSnapshot=()=>({number:lastResult,spinning:!!active,wheel:wheelAngle,ball:ballAngle,pocket:pocketAt(wheelAngle,ballAngle),ballPosition:ball.position.toArray(),round,audio:sound.snapshot()});
+window.rouletteSnapshot=()=>({number:lastResult,spinning:!!active,effectTier,specialEnabled,duration:active?.duration,wheel:wheelAngle,ball:ballAngle,pocket:pocketAt(wheelAngle,ballAngle),ballPosition:ball.position.toArray(),round,audio:sound.snapshot()});

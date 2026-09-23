@@ -30,3 +30,14 @@ test('Unbiased sampler rejects the incomplete tail of the uint32 range',()=>{
   assert.equal(calls,2);
   for(let n=0;n<37;n++)assert.equal(randomNumber(a=>{a[0]=limit-37+n;}),n);
 });
+test('Special spins add rotations and settle into every selected pocket',()=>{
+  for(const n of ORDER){
+    const normal=createSpin(n,0,-.65,.15);
+    for(const tier of [true,'matsu']){
+      const special=createSpin(n,0,-.65,.15,tier);
+      assert.ok(special.wheelEnd>normal.wheelEnd);
+      const end=sampleSpin(special,1);
+      assert.equal(pocketAt(end.wheel,end.angle),n);
+    }
+  }
+});

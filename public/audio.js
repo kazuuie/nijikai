@@ -1,4 +1,4 @@
-import {CAPTURE_PROGRESS,BOUNCE_CONTACTS} from './roulette.js';
+import {CAPTURE_PROGRESS,BOUNCE_CONTACTS,EFFECTS} from './roulette.js';
 
 // Relative level of rolling and bounce sounds only; wheel/master are independent.
 export const BALL_SOUND_LEVEL = .8;
@@ -35,6 +35,10 @@ export class RouletteAudio {
     this.loops=[];
     this.collisions=[];
     this.progress=0;
+    this.special=false;
+    this.tier='ume';
+    this.flourishCount=0;
+    this.surgeCount=0;
   }
   async prepare() {
     try {
@@ -47,7 +51,7 @@ export class RouletteAudio {
       }
       const resumed=this.context.resume();
       if(!this.loading){
-        this.loading=Promise.all(['wheel','ball','collision'].map(async name=>{
+        this.loading=Promise.all(['wheel','ball','collision','suspense','celebration','surge','grand'].map(async name=>{
           const response=await fetch(`./audio/${name}.wav`);
           if(!response.ok)throw new Error(`Audio load failed: ${name}`);
           return [name,await this.context.decodeAudioData(await response.arrayBuffer())];
@@ -76,9 +80,11 @@ export class RouletteAudio {
     source.onended=()=>{source.disconnect();gain.disconnect();this.sources.delete(voice);};
     return voice;
   }
-  start(progress=0) {
+  start(progress=0,tier=this.tier) {
     this.stop();
-    if(progress===0)this.collisions=[];
+    this.tier=tier===true?'take':tier===false?'ume':tier;
+    this.special=this.tier!=='ume';
+    if(progress===0){this.collisions=[];this.flourishCount=0;this.surgeCount=0;}
     this.progress=progress;
     if(!this.buffers||this.context.state!=='running')return;
     this.loops=['wheel','ball'].map(name=>this.source(name,true,0));
@@ -86,14 +92,35 @@ export class RouletteAudio {
     this.loops[0].source.playbackRate.value=state.wheelRate;
     this.loops[1].source.playbackRate.value=state.ballRate;
     for(const voice of this.loops)voice.source.start();
+    if(this.special){this.suspense=this.source('suspense',true,0);this.suspense.source.start();}
     this.update(progress);
   }
   update(progress) {
     const previous=this.progress;
     this.progress=clamp(progress);
     if(!this.loops.length)return;
-    if(progress>=1){this.stop();return;}
+    if(progress>=1){
+      this.stop();
+      if(this.special&&this.flourishCount===0){
+        const voice=this.source(this.tier==='matsu'?'grand':'celebration',false,this.tier==='matsu'?.65:.45);voice.source.start();this.flourishCount++;
+      }
+      return;
+    }
     const state=soundAt(progress),now=this.context.currentTime;
+    if(this.special){
+      EFFECTS[this.tier].surges.forEach((at,index)=>{
+        if(previous<at&&progress>=at&&progress-at<.025){
+          const voice=this.source('surge',false,Math.min(.65,.42+index*.045));
+          voice.source.playbackRate.value=.92+index*.08;voice.source.start();this.surgeCount++;
+        }
+      });
+    }
+    if(this.suspense){
+      const build=clamp((progress-.32)/.62);
+      const hush=progress>.95?Math.max(0,(1-progress)/.05):1;
+      this.suspense.gain.gain.setTargetAtTime((.025+.16*build)*hush,now,.04);
+      this.suspense.source.playbackRate.setTargetAtTime(.72+.65*build,now,.04);
+    }
     for(const [i,name] of ['wheel','ball'].entries()){
       this.loops[i].source.playbackRate.setTargetAtTime(state[`${name}Rate`],now,.025);
       this.loops[i].gain.gain.setTargetAtTime(state[`${name}Gain`],now,.025);
@@ -117,10 +144,11 @@ export class RouletteAudio {
       voice.gain.gain.setTargetAtTime(0,now,.008);
       voice.source.stop(now+.04);
     }
-    this.sources.clear();this.loops=[];
+    this.sources.clear();this.loops=[];this.suspense=null;
   }
   snapshot() {
     return {ready:!!this.buffers,state:this.context?.state,volume:this.volume,muted:this.muted,masterGain:this.master?.gain.value,
+      tier:this.tier,special:this.special,flourishCount:this.flourishCount,surgeCount:this.surgeCount,suspense:!!this.suspense,
       loops:this.loops.length,collisions:[...this.collisions],progress:this.progress,...soundAt(this.progress)};
   }
 }
