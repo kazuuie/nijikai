@@ -5,10 +5,11 @@ export const STEP = TAU / 37;
 export const DURATION = 10500;
 export const SPECIAL_DURATION = 18500;
 export const SPECIAL_SURGES = Object.freeze([.64,.70,.76]);
+const THIRD_CHANCE_ADVANCE_SECONDS = 3;
 export const EFFECTS = Object.freeze({
-  ume:{label:'梅',duration:DURATION,surges:[]},
-  take:{label:'竹',duration:SPECIAL_DURATION,surges:SPECIAL_SURGES},
-  matsu:{label:'松',duration:24500,surges:[.46,.53,.60,.67,.74]},
+  ume:{label:'1st',duration:DURATION,surges:[]},
+  take:{label:'2nd',duration:SPECIAL_DURATION,surges:SPECIAL_SURGES},
+  matsu:{label:'3rd',duration:24500,surges:[9.8,12.4,14.6,16.5,18.1,19.45,20.6,21.55,22.35,23.05,23.75].map(seconds=>(seconds-THIRD_CHANCE_ADVANCE_SECONDS)/24.5)},
 });
 export const CAPTURE_PROGRESS = .84;
 const BOUNCE_START = .68;

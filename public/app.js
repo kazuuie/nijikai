@@ -58,6 +58,14 @@ specialButton.addEventListener('click',event=>{
   try{localStorage.setItem('roulette-tier',effectTier);}catch{}
 });
 updateSpecialControl();lucide.createIcons();
+const atmosphere=document.createElement('div');
+atmosphere.id='tier-atmosphere';atmosphere.setAttribute('aria-hidden','true');
+for(let i=0;i<48;i++){
+  const sparkle=document.createElement('i');
+  sparkle.style.cssText=`--x:${(i*43+7)%100}%;--y:${(i*31+3)%100}%;--delay:${-(i%13)*.7}s;--size:${i%5===0?9:3}px;--duration:${4+i%5}s`;
+  atmosphere.appendChild(sparkle);
+}
+document.body.prepend(atmosphere);
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
@@ -209,16 +217,17 @@ function celebrate(){
     celebrationTimer=setTimeout(clearCelebration,4000);
   }
 }
-function resetLighting(){teal.color.set('#0a8579');teal.emissive.set('#16cbb1');teal.emissiveIntensity=.8;fill.color.set(0x70ffeb);fill.intensity=35;specialHalo.visible=false;document.body.classList.remove('special-kick');specialBanner.querySelector('b').textContent='CHANCE';}
+function resetLighting(){teal.color.set('#0a8579');teal.emissive.set('#16cbb1');teal.emissiveIntensity=.8;fill.color.set(0x70ffeb);fill.intensity=35;specialHalo.visible=false;document.body.classList.remove('special-kick');specialBanner.querySelector('b').textContent='CHANCE';if(specialEnabled&&screenState!=='title')specialLighting(0);}
 function specialLighting(progress){
   const pulse=.5+.5*Math.sin(progress*TAU*12);
   specialHalo.visible=true;specialHalo.rotation.y=progress*TAU*.8;
   const surges=EFFECTS[effectTier].surges;
   const surge=surges.filter(at=>at<=progress).length;
   const since=surge?progress-surges[surge-1]:1;
-  const kick=since<.04;
+  const kick=since<(effectTier==='matsu'?300/EFFECTS.matsu.duration:.04);
   document.body.classList.toggle('special-kick',kick);
-  specialBanner.querySelectorAll('i').forEach((light,i)=>light.classList.toggle('lit',i<surge));
+  const lights=specialBanner.querySelectorAll('i');
+  lights.forEach((light,i)=>light.classList.toggle('lit',i<Math.ceil(surge*lights.length/surges.length)));
   haloMaterial.emissiveIntensity=kick?2.8:1.1+pulse*.5;
   teal.color.set('#c29b3f');teal.emissive.set('#ffc65a');
   teal.emissiveIntensity=kick?2.5:.8+pulse*.9;
@@ -244,7 +253,7 @@ function tick(now){
   const progress=(now-active.start)/active.duration;
   if(active.special){
     specialLighting(progress);
-    document.body.classList.toggle('special-suspense',progress>(active.tier==='matsu'?.42:.60)&&progress<1);
+    document.body.classList.toggle('special-suspense',progress>(active.tier==='matsu'?EFFECTS.matsu.surges[0]-.02:.60)&&progress<1);
     if(progress>.82)status.textContent='運命の一球…';
     else if(progress>.60)status.textContent='まだ、まだ…';
   }
@@ -278,7 +287,7 @@ async function spin(){
   const variation=new Uint32Array(1);crypto.getRandomValues(variation);
   const front=(variation[0]/2**32-.5)*.8;
   clearCelebration();clearGrand();resetLighting();
-  specialBanner.querySelector('div').innerHTML=EFFECTS[effectTier].surges.map(()=>'<i></i>').join('');
+  specialBanner.querySelector('div').innerHTML=EFFECTS[effectTier].surges.slice(0,5).map(()=>'<i></i>').join('');
   active={spin:createSpin(n,wheelAngle,ballAngle,front,effectTier==='matsu'?'matsu':specialEnabled),start:performance.now(),special:specialEnabled,tier:effectTier,duration:EFFECTS[effectTier].duration};
   sound.start(0,effectTier);
   document.body.classList.remove('special-result','special-suspense');
@@ -344,7 +353,7 @@ function startGame(){
   screenState='entering';startButton.disabled=true;cancelAnimationFrame(titleFrame);
   document.body.dataset.screen='entering';
   void sound.prepare().then(ready=>{if(ready&&screenState==='entering')sound.playWelcome();});
-  wheel.rotation.y=wheelAngle;resize();
+  wheel.rotation.y=wheelAngle;resetLighting();resize();
   setTimeout(()=>{
     screenState='game';document.body.dataset.screen='game';titleScreen.hidden=true;
     document.querySelectorAll('header,main,footer').forEach(element=>{element.inert=false;});

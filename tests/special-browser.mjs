@@ -4,12 +4,14 @@ import {mkdir} from 'node:fs/promises';
 import {enterGame} from './start-game.mjs';
 const browser=await chromium.launch({...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
-  const page=await browser.newPage({viewport:{width:1920,height:1080}});
+  const context=await browser.newContext({viewport:{width:1920,height:1080}});
+  let page=await context.newPage();
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',r=>new URL(r.request().url()).hostname==='localhost'?r.continue():r.abort());
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.goto('http://localhost:8000/?v=special');await page.waitForFunction(()=>window.rouletteSnapshot);
   await enterGame(page);
+  assert.deepEqual(await page.locator('#special button').allTextContents(),['1st','2nd','3rd']);
   await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/title-to-game.png'});
   assert.equal(await page.locator('button[data-tier="ume"]').getAttribute('aria-pressed'),'true');
   await page.locator('button[data-tier="take"]').click();await page.reload();await page.waitForFunction(()=>window.rouletteSnapshot);
@@ -64,18 +66,31 @@ try{
   const normal=await page.evaluate(()=>rouletteSnapshot());assert.equal(normal.spinning,false);assert.equal(normal.audio.flourishCount,0);assert.equal(normal.audio.surgeCount,0);
   assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('special-result')),false);
   await page.setViewportSize({width:1920,height:1080});
-  await page.locator('button[data-tier="matsu"]').click();await page.reload();await page.waitForFunction(()=>window.rouletteSnapshot);
+  await page.locator('button[data-tier="matsu"]').click();
+  // Isolate the final audio scenario while preserving settings in this context.
+  const previousPage=page;
+  page=await previousPage.context().newPage();
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/*',r=>new URL(r.request().url()).hostname==='localhost'?r.continue():r.abort());
+  await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
+  await previousPage.close();
+  await page.goto('http://localhost:8000/?v=special');await page.waitForFunction(()=>window.rouletteSnapshot);
   await enterGame(page);
   assert.equal((await page.evaluate(()=>rouletteSnapshot())).effectTier,'matsu');
   await page.evaluate(()=>{crypto.getRandomValues=a=>{a.fill(17);return a;};});
   await page.locator('#spin').click();await page.waitForFunction(()=>rouletteSnapshot().spinning);
   assert.equal((await page.evaluate(()=>rouletteSnapshot())).duration,24500);
   let matsuTime=0;
-  for(const [i,at] of [.46,.53,.60,.67,.74].entries()){
-    const target=Math.ceil(at*24500)+25;
+  const beats=[6.8,9.4,11.6,13.5,15.1,16.45,17.6,18.55,19.35,20.05,20.75];
+  for(const [i,seconds] of beats.entries()){
+    const target=Math.ceil(seconds*1000)+25;
     await page.clock.fastForward(target-matsuTime);matsuTime=target;
     assert.equal((await page.evaluate(()=>rouletteSnapshot().audio)).surgeCount,i+1);
-    assert.equal(await page.locator('#special-banner i.lit').count(),i+1);
+    assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('special-suspense')),true);
+    assert.equal(await page.locator('#special-banner i.lit').count(),Math.ceil((i+1)*5/beats.length));
+    assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('special-kick')),true);
+    await page.clock.fastForward(350);matsuTime+=350;
+    assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('special-kick')),false);
   }
   assert.equal(await page.locator('#grand-stage').isVisible(),false);
   await page.clock.fastForward(24600-matsuTime);
@@ -87,7 +102,13 @@ try{
   assert.equal(await page.locator('#celebration span').count(),180);
   await page.locator('#mute').click();
   assert.equal((await page.evaluate(()=>rouletteSnapshot().audio)).muted,true);
-  await page.waitForFunction(()=>rouletteSnapshot().audio.masterGain<.001,undefined,{polling:100,timeout:5000});
+  // Web Audio advances in real time, independently of the paused page clock.
+  for(let attempt=0;attempt<50;attempt++){
+    if((await page.evaluate(()=>rouletteSnapshot().audio)).masterGain<.001)break;
+    await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  const mutedAudio=await page.evaluate(()=>rouletteSnapshot().audio);
+  assert.ok(mutedAudio.masterGain<.001,JSON.stringify(mutedAudio));
   await page.locator('#mute').click();
   await page.clock.runFor(950);
   for(const [width,height] of [[1920,1080],[390,844],[320,720],[844,390]]){

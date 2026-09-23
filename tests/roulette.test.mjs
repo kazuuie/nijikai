@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {ORDER,RED,colorOf,createSpin,sampleSpin,pocketAt,randomNumber,TAU} from '../public/roulette.js';
+import {ORDER,RED,colorOf,createSpin,sampleSpin,pocketAt,randomNumber,TAU,EFFECTS,CAPTURE_PROGRESS} from '../public/roulette.js';
 
 test('European sequence and all 37 colors',()=>{
   assert.deepEqual(ORDER,[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26]);
@@ -40,4 +40,18 @@ test('Special spins add rotations and settle into every selected pocket',()=>{
       assert.equal(pocketAt(end.wheel,end.angle),n);
     }
   }
+});
+test('3rd CHANCE intervals accelerate to a heartbeat cadence before stopping',()=>{
+  assert.deepEqual(Object.values(EFFECTS).map(mode=>mode.label),['1st','2nd','3rd']);
+  const times=EFFECTS.matsu.surges.map(t=>t*EFFECTS.matsu.duration);
+  assert.ok(Math.abs(times[0]-6800)<1e-8);
+  assert.ok(Math.abs(times.at(-1)-times[0]-13950)<1e-8);
+  let previousGap=Infinity;
+  for(let i=1;i<times.length;i++){
+    const gap=times[i]-times[i-1];assert.ok(gap<=previousGap+1e-8);assert.ok(gap>=699.99);previousGap=gap;
+  }
+  assert.ok(Math.abs(previousGap-700)<1e-8);
+  assert.ok(times.at(-3)<CAPTURE_PROGRESS*EFFECTS.matsu.duration);
+  assert.ok(Math.abs(times.at(-1)-20750)<1e-8);
+  assert.ok(times.at(-1)+.95/1.5*1000<EFFECTS.matsu.duration);
 });

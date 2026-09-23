@@ -69,7 +69,15 @@ export class RouletteAudio {
   }
   setSettings(volume,muted) {
     this.volume=clamp(volume);this.muted=muted;
-    if(this.master)this.master.gain.setTargetAtTime(muted?0:this.volume**2,this.context.currentTime,.015);
+    if(this.master){
+      const now=this.context.currentTime;
+      const gain=this.master.gain;
+      const current=gain.value;
+      gain.cancelScheduledValues(now);
+      gain.value=muted?0:this.volume**2;
+      gain.setValueAtTime(current,now);
+      gain.linearRampToValueAtTime(muted?0:this.volume**2,now+.02);
+    }
     try{localStorage.setItem('roulette-audio',JSON.stringify({volume:this.volume,muted}));}catch{}
   }
   playWelcome(){
@@ -116,7 +124,7 @@ export class RouletteAudio {
       EFFECTS[this.tier].surges.forEach((at,index)=>{
         if(previous<at&&progress>=at&&progress-at<.025){
           const voice=this.source('surge',false,Math.min(.65,.42+index*.045));
-          voice.source.playbackRate.value=.92+index*.08;voice.source.start();this.surgeCount++;
+          voice.source.playbackRate.value=this.tier==='matsu'?Math.min(1.5,.92+index*.08):.92+index*.08;voice.source.start();this.surgeCount++;
         }
       });
     }
