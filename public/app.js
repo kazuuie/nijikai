@@ -42,7 +42,7 @@ let specialEnabled=effectTier!=='ume';
 const specialButton=document.createElement('fieldset');
 specialButton.id='special';specialButton.className='effect-selector';
 specialButton.setAttribute('aria-label','演出の強さ');
-specialButton.innerHTML=Object.entries(EFFECTS).map(([id,mode])=>`<button type="button" data-tier="${id}" title="${mode.label}：${id==='ume'?'通常':id==='take'?'特別演出':'最上位演出'}">${mode.label}</button>`).join('');
+specialButton.innerHTML=Object.entries(EFFECTS).map(([id,mode])=>`<button type="button" data-tier="${id}" title="${mode.label}：${id==='ume'?'通常':id==='take'?'特別演出':id==='matsu'?'豪華演出':'黄金の神殿演出'}">${mode.label}</button>`).join('');
 document.querySelector('.header-right').prepend(specialButton);
 function updateSpecialControl(){
   specialEnabled=effectTier!=='ume';
@@ -190,22 +190,71 @@ let lastResult=null;
 const celebration=document.querySelector('#celebration');
 const specialBanner=document.querySelector('#special-banner');
 const grandStage=document.querySelector('#grand-stage');
+const fourthStage=document.querySelector('#fourth-stage');
+const fourthVideo=document.querySelector('#fourth-video');
+const summitNumber=document.querySelector('#summit-number');
+function approachNumber(travel){
+  const t=Math.max(0,Math.min(1,travel));
+  // Hidden behind the summit until the last part of the climb.
+  const arrival=Math.max(0,Math.min(1,(t-.72)/.28));
+  summitNumber.style.visibility=t<=.72?'hidden':'visible';
+  summitNumber.style.opacity=String(Math.min(1,arrival*5));
+  summitNumber.style.setProperty('--scale',String(reducedMotion.matches?1:1/(8-7*arrival)));
+  summitNumber.style.setProperty('--height',`${31+20*arrival}%`);
+  summitNumber.style.setProperty('--haze',`${(1-arrival)*.65}px`);
+}
+// The clip ends at the summit: 7.2 seconds at 1.2x takes six seconds.
+fourthVideo.defaultPlaybackRate=1.2;
+fourthVideo.playbackRate=1.2;
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+let fourthPhase='';
+let fourthVideoFailed=false;
+function syncSummitNumber(){
+  if(fourthPhase==='ascent'&&Number.isFinite(fourthVideo.duration)&&fourthVideo.duration>0)approachNumber(fourthVideo.currentTime/fourthVideo.duration);
+}
+fourthVideo.addEventListener('seeked',syncSummitNumber);
+fourthVideo.addEventListener('timeupdate',syncSummitNumber);
+if(fourthVideo.requestVideoFrameCallback){
+  const followFrame=()=>{syncSummitNumber();fourthVideo.requestVideoFrameCallback(followFrame);};
+  fourthVideo.requestVideoFrameCallback(followFrame);
+}
+fourthVideo.addEventListener('error',()=>{fourthVideoFailed=true;});
+fourthVideo.addEventListener('ended',()=>{
+  if(active?.tier==='royal'&&fourthPhase==='ascent'&&!document.hidden){cancelAnimationFrame(frame);tick(performance.now());}
+});
+function clearFourth(){fourthPhase='';delete document.body.dataset.fourthPhase;fourthVideo.pause();fourthVideo.currentTime=0;summitNumber.querySelector('span').textContent='';}
+function fourthLighting(progress){
+  const elapsed=progress*EFFECTS.royal.duration;
+  const phase=elapsed<EFFECTS.royal.gateAt?'':elapsed<EFFECTS.royal.templeAt?'gate':'ascent';
+  if(phase==='ascent'){
+    const travel=!fourthVideoFailed&&!reducedMotion.matches&&fourthVideo.duration>0
+      ?fourthVideo.currentTime/fourthVideo.duration
+      :(elapsed-EFFECTS.royal.templeAt)/(EFFECTS.royal.duration-EFFECTS.royal.templeAt);
+    approachNumber(travel);
+  }
+  if(phase===fourthPhase)return;
+  fourthPhase=phase;document.body.dataset.fourthPhase=phase;
+  fourthStage.querySelector('b').textContent=phase==='gate'?'運命の扉が、開く。':phase==='destiny'?'さあ、最高の瞬間へ。':'幸運は、頂点へ。';
+  if(phase==='ascent'&&!reducedMotion.matches&&!document.hidden&&!fourthVideoFailed)void fourthVideo.play().catch(()=>{fourthVideoFailed=true;});
+}
 let grandTimer;
-function clearGrand(){clearTimeout(grandTimer);document.body.classList.remove('grand-reveal');}
+function clearGrand(){clearTimeout(grandTimer);document.body.classList.remove('grand-reveal');clearFourth();}
 function grandReveal(number){
-  clearGrand();
+  clearTimeout(grandTimer);
   grandStage.querySelectorAll('.grand-numbers span').forEach(span=>{span.textContent=String(number);});
   grandStage.querySelector('.grand-color').textContent=colorNames[colorOf(number)];
   document.body.classList.add('grand-reveal');
-  grandTimer=setTimeout(clearGrand,4400);
+  grandStage.querySelector('.grand-title').textContent=effectTier==='royal'?'GOLDEN FINALE':'PREMIUM CELEBRATION';
+  if(effectTier==='royal'){document.body.dataset.fourthPhase='finale';fourthVideo.pause();approachNumber(1);}
+  grandTimer=setTimeout(clearGrand,effectTier==='royal'?7000:4400);
 }
 let celebrationTimer;
 function clearCelebration(){clearTimeout(celebrationTimer);celebration.replaceChildren();}
 function celebrate(){
   clearCelebration();
-  (effectTier==='matsu'?grandStage:document.querySelector('main')).appendChild(celebration);
+  (effectTier==='royal'?fourthStage:effectTier==='matsu'?grandStage:document.querySelector('main')).appendChild(celebration);
   if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
-    for(let i=0;i<(effectTier==='matsu'?180:108);i++){
+    for(let i=0;i<(effectTier==='royal'?260:effectTier==='matsu'?180:108);i++){
       const ribbon=document.createElement('span');
       ribbon.style.setProperty('--x',`${(i*37)%100}%`);
       ribbon.style.setProperty('--drift',`${(i%7-3)*35}px`);
@@ -214,7 +263,7 @@ function celebrate(){
       ribbon.style.background=['#f1d480','#ee778d','#67e6d3','#f9f4da'][i%4];
       celebration.appendChild(ribbon);
     }
-    celebrationTimer=setTimeout(clearCelebration,4000);
+    celebrationTimer=setTimeout(clearCelebration,effectTier==='royal'?6500:4000);
   }
 }
 function resetLighting(){teal.color.set('#0a8579');teal.emissive.set('#16cbb1');teal.emissiveIntensity=.8;fill.color.set(0x70ffeb);fill.intensity=35;specialHalo.visible=false;document.body.classList.remove('special-kick');specialBanner.querySelector('b').textContent='CHANCE';if(specialEnabled&&screenState!=='title')specialLighting(0);}
@@ -224,7 +273,7 @@ function specialLighting(progress){
   const surges=EFFECTS[effectTier].surges;
   const surge=surges.filter(at=>at<=progress).length;
   const since=surge?progress-surges[surge-1]:1;
-  const kick=since<(effectTier==='matsu'?300/EFFECTS.matsu.duration:.04);
+  const kick=since<(['matsu','royal'].includes(effectTier)?300/EFFECTS[effectTier].duration:.04);
   document.body.classList.toggle('special-kick',kick);
   const lights=specialBanner.querySelectorAll('i');
   lights.forEach((light,i)=>light.classList.toggle('lit',i<Math.ceil(surge*lights.length/surges.length)));
@@ -232,7 +281,7 @@ function specialLighting(progress){
   teal.color.set('#c29b3f');teal.emissive.set('#ffc65a');
   teal.emissiveIntensity=kick?2.5:.8+pulse*.9;
   fill.color.set(kick?'#ff6957':'#ffd79a');fill.intensity=kick?65:25+pulse*15;
-  if(effectTier==='matsu'){
+  if(['matsu','royal'].includes(effectTier)){
     haloMaterial.emissive.setHSL((progress*1.8)%1,.85,.55);
     haloMaterial.emissiveIntensity=kick?3.5:1.8;
     teal.emissiveIntensity=kick?3:1.5+pulse;
@@ -250,10 +299,17 @@ function render(){if(!contextLost)renderer.render(scene,camera);}
 function setBall(state){wheelAngle=state.wheel;ballAngle=state.angle;wheel.rotation.y=wheelAngle;ball.position.set(state.radius*Math.sin(ballAngle),state.height,state.radius*Math.cos(ballAngle));}
 function tick(now){
   if(!active)return;
-  const progress=(now-active.start)/active.duration;
+  let progress=(now-active.start)/active.duration;
+  if(active.tier==='royal'&&fourthPhase==='ascent'&&fourthVideo.ended)progress=1;
+  // A slow decoder must finish the stairs before revealing the result.
+  if(active.tier==='royal'&&progress>=1&&!reducedMotion.matches&&!fourthVideoFailed&&!fourthVideo.ended){
+    if(progress<1.5)progress=.999;
+    else fourthVideoFailed=true; // Unavailable/stalled media falls back to the poster.
+  }
   if(active.special){
     specialLighting(progress);
-    document.body.classList.toggle('special-suspense',progress>(active.tier==='matsu'?EFFECTS.matsu.surges[0]-.02:.60)&&progress<1);
+    if(active.tier==='royal')fourthLighting(progress);
+    document.body.classList.toggle('special-suspense',progress>(['matsu','royal'].includes(active.tier)?EFFECTS[active.tier].surges[0]-.02:.60)&&progress<1);
     if(progress>.82)status.textContent='運命の一球…';
     else if(progress>.60)status.textContent='まだ、まだ…';
   }
@@ -269,7 +325,7 @@ function tick(now){
     document.body.classList.remove('spinning');document.body.classList.add('revealed');
     document.body.classList.remove('special-suspense','special-kick');
     document.body.classList.toggle('special-result',special);
-    if(special){specialBanner.querySelector('b').textContent=effectTier==='matsu'?'GLORIOUS!':'LUCKY!';celebrate();if(effectTier==='matsu')grandReveal(n);}
+    if(special){specialBanner.querySelector('b').textContent=effectTier==='matsu'?'GLORIOUS!':'LUCKY!';celebrate();if(['matsu','royal'].includes(effectTier))grandReveal(n);}
     document.querySelector('#round').textContent=`ROUND ${String(round).padStart(2,'0')}`;
     footerState.textContent='A LUCKY MOMENT TO REMEMBER';
     spinButton.disabled=false;spinButton.querySelector('span').textContent='回す';
@@ -288,7 +344,8 @@ async function spin(){
   const front=(variation[0]/2**32-.5)*.8;
   clearCelebration();clearGrand();resetLighting();
   specialBanner.querySelector('div').innerHTML=EFFECTS[effectTier].surges.slice(0,5).map(()=>'<i></i>').join('');
-  active={spin:createSpin(n,wheelAngle,ballAngle,front,effectTier==='matsu'?'matsu':specialEnabled),start:performance.now(),special:specialEnabled,tier:effectTier,duration:EFFECTS[effectTier].duration};
+  active={spin:createSpin(n,wheelAngle,ballAngle,front,['matsu','royal'].includes(effectTier)?effectTier:specialEnabled),start:performance.now(),special:specialEnabled,tier:effectTier,duration:EFFECTS[effectTier].duration};
+  if(effectTier==='royal'){summitNumber.querySelector('span').textContent=String(n);approachNumber(0);}
   sound.start(0,effectTier);
   document.body.classList.remove('special-result','special-suspense');
   document.body.classList.toggle('special-round',specialEnabled);
@@ -329,7 +386,8 @@ function pauseSpin(){
   if(active&&active.paused===undefined){active.paused=performance.now();cancelAnimationFrame(frame);sound.stop();}
 }
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){pauseSpin();return;}
+  if(document.hidden){pauseSpin();fourthVideo.pause();return;}
+  if(fourthPhase==='ascent'&&active&&!reducedMotion.matches&&!fourthVideoFailed)void fourthVideo.play().catch(()=>{fourthVideoFailed=true;});
   if(active&&active.paused!==undefined&&!contextLost){
     active.start+=performance.now()-active.paused;delete active.paused;
     sound.start((performance.now()-active.start)/active.duration);

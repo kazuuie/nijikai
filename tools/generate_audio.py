@@ -94,6 +94,18 @@ def main():
                 value += envelope*chord+drum
         grand.append(math.tanh(value*.35)*min(1,(3.8-t)/.2))
     write("grand.wav", grand, .88)
+    royal = []
+    for i in range(RATE * 6):
+        t = i / RATE
+        value = 0
+        for start, root in [(0, 130.81), (.35, 164.81), (.7, 196), (1.15, 261.63), (2.1, 130.81)]:
+            age = t - start
+            if age >= 0:
+                envelope = min(1, age / .015) * math.exp(-age * 1.3)
+                value += envelope * sum(math.sin(math.tau * root * ratio * age) for ratio in [1, 1.25, 1.5, 2, 3, 4])
+                value += 1.5 * math.exp(-age * 12) * math.sin(math.tau * 55 * age)
+        royal.append(math.tanh(value * .28) * min(1, (6-t) / .6))
+    write("royal.wav", royal, .85)
     welcome = []
     for i in range(round(RATE * .8)):
         t = i/RATE

@@ -9,13 +9,13 @@ export function collisionSound(contact,index) {
 }
 
 const clamp = value => Math.max(0, Math.min(1, value));
-export function soundAt(progress) {
+export function soundAt(progress,tier='ume') {
   const t = clamp(progress);
   const wheelSpeed = (1-t)**2;
   const ballSpeed = Math.max(0, 1-t/CAPTURE_PROGRESS)**2;
   return {
     wheelRate:.32+1.08*wheelSpeed,
-    wheelGain:.30*wheelSpeed**.65,
+    wheelGain:tier==='royal'?Math.max(.12,.30*wheelSpeed**.65)*clamp((1-t)/.02):.30*wheelSpeed**.65,
     ballRate:.28+1.42*ballSpeed,
     ballGain:t<CAPTURE_PROGRESS ? BALL_SOUND_LEVEL*.44*ballSpeed**.35 : 0,
   };
@@ -52,7 +52,7 @@ export class RouletteAudio {
       }
       const resumed=this.context.resume();
       if(!this.loading){
-        this.loading=Promise.all(['wheel','ball','collision','suspense','celebration','surge','grand','welcome'].map(async name=>{
+        this.loading=Promise.all(['wheel','ball','collision','suspense','celebration','surge','grand','royal','temple','welcome'].map(async name=>{
           const response=await fetch(`./audio/${name}.wav`);
           if(!response.ok)throw new Error(`Audio load failed: ${name}`);
           return [name,await this.context.decodeAudioData(await response.arrayBuffer())];
@@ -101,37 +101,47 @@ export class RouletteAudio {
     this.progress=progress;
     if(!this.buffers||this.context.state!=='running')return;
     this.loops=['wheel','ball'].map(name=>this.source(name,true,0));
-    const state=soundAt(progress);
+    const state=soundAt(progress,this.tier);
     this.loops[0].source.playbackRate.value=state.wheelRate;
     this.loops[1].source.playbackRate.value=state.ballRate;
     for(const voice of this.loops)voice.source.start();
     if(this.special){this.suspense=this.source('suspense',true,0);this.suspense.source.start();}
+    if(this.tier==='royal'&&progress>=EFFECTS.royal.templeAt/EFFECTS.royal.duration&&progress<1)this.startTemple(progress);
     this.update(progress);
+  }
+  startTemple(progress){
+    if(this.temple||!this.buffers)return;
+    const offset=Math.max(0,(progress*EFFECTS.royal.duration-EFFECTS.royal.templeAt)/1000);
+    if(offset>=this.buffers.temple.duration)return;
+    this.temple=this.source('temple',false,.65);
+    this.temple.source.start(0,offset);
   }
   update(progress) {
     const previous=this.progress;
     this.progress=clamp(progress);
     if(!this.loops.length)return;
     if(progress>=1){
-      this.stop();
+      this.stop(this.tier==='royal');
+      if(this.tier==='royal'){this.flourishCount=1;return;}
       if(this.special&&this.flourishCount===0){
-        const voice=this.source(this.tier==='matsu'?'grand':'celebration',false,this.tier==='matsu'?.65:.45);voice.source.start();this.flourishCount++;
+        const voice=this.source(this.tier==='royal'?'royal':this.tier==='matsu'?'grand':'celebration',false,['matsu','royal'].includes(this.tier)?.65:.45);voice.source.start();this.flourishCount++;
       }
       return;
     }
-    const state=soundAt(progress),now=this.context.currentTime;
-    if(this.special){
+    const state=soundAt(progress,this.tier),now=this.context.currentTime;
+    if(this.tier==='royal'&&progress>=EFFECTS.royal.templeAt/EFFECTS.royal.duration)this.startTemple(progress);
+    if(this.special&&!(this.tier==='royal'&&progress>=EFFECTS.royal.templeAt/EFFECTS.royal.duration)){
       EFFECTS[this.tier].surges.forEach((at,index)=>{
         if(previous<at&&progress>=at&&progress-at<.025){
           const voice=this.source('surge',false,Math.min(.65,.42+index*.045));
-          voice.source.playbackRate.value=this.tier==='matsu'?Math.min(1.5,.92+index*.08):.92+index*.08;voice.source.start();this.surgeCount++;
+          voice.source.playbackRate.value=['matsu','royal'].includes(this.tier)?Math.min(1.5,.92+index*.08):.92+index*.08;voice.source.start();this.surgeCount++;
         }
       });
     }
     if(this.suspense){
       const build=clamp((progress-.32)/.62);
       const hush=progress>.95?Math.max(0,(1-progress)/.05):1;
-      this.suspense.gain.gain.setTargetAtTime((.025+.16*build)*hush,now,.04);
+      this.suspense.gain.gain.setTargetAtTime((.025+.16*build)*hush*(this.tier==='royal'&&progress>=EFFECTS.royal.templeAt/EFFECTS.royal.duration?0:1),now,.04);
       this.suspense.source.playbackRate.setTargetAtTime(.72+.65*build,now,.04);
     }
     for(const [i,name] of ['wheel','ball'].entries()){
@@ -149,19 +159,22 @@ export class RouletteAudio {
       }
     });
   }
-  stop() {
+  stop(preserveTemple=false) {
     if(!this.context)return;
     const now=this.context.currentTime;
     for(const voice of this.sources){
+      if(preserveTemple&&voice===this.temple)continue;
       voice.gain.gain.cancelScheduledValues(now);
       voice.gain.gain.setTargetAtTime(0,now,.008);
       voice.source.stop(now+.04);
     }
-    this.sources.clear();this.loops=[];this.suspense=null;
+    const temple=preserveTemple?this.temple:null;
+    this.sources.clear();if(temple)this.sources.add(temple);
+    this.temple=temple;this.loops=[];this.suspense=null;
   }
   snapshot() {
     return {ready:!!this.buffers,state:this.context?.state,volume:this.volume,muted:this.muted,masterGain:this.master?.gain.value,
-      welcomeCount:this.welcomeCount,tier:this.tier,special:this.special,flourishCount:this.flourishCount,surgeCount:this.surgeCount,suspense:!!this.suspense,
-      loops:this.loops.length,collisions:[...this.collisions],progress:this.progress,...soundAt(this.progress)};
+      temple:!!this.temple,welcomeCount:this.welcomeCount,tier:this.tier,special:this.special,flourishCount:this.flourishCount,surgeCount:this.surgeCount,suspense:!!this.suspense,
+      loops:this.loops.length,collisions:[...this.collisions],progress:this.progress,...soundAt(this.progress,this.tier)};
   }
 }

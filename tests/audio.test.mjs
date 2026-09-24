@@ -65,3 +65,9 @@ test('Capture adds no dedicated landing sound and playback stops cleanly',()=>{
   engine.update(1);assert.equal(engine.sources.size,0);assert.equal(engine.loops.length,0);
   engine.start();engine.update(1);assert.equal(engine.sources.size,0);
 });
+
+test('4th keeps the wheel audible through the temple and stops at the result',()=>{
+  for(const t of [.5,.8,.9,.97])assert.ok(soundAt(t,'royal').wheelGain>=.12);
+  assert.ok(soundAt(.99,'royal').wheelGain<.12);
+  assert.equal(soundAt(1,'royal').wheelGain,0);
+});

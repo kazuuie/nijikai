@@ -10,6 +10,7 @@ export const EFFECTS = Object.freeze({
   ume:{label:'1st',duration:DURATION,surges:[]},
   take:{label:'2nd',duration:SPECIAL_DURATION,surges:SPECIAL_SURGES},
   matsu:{label:'3rd',duration:24500,surges:[9.8,12.4,14.6,16.5,18.1,19.45,20.6,21.55,22.35,23.05,23.75].map(seconds=>(seconds-THIRD_CHANCE_ADVANCE_SECONDS)/24.5)},
+  royal:{label:'4th',duration:31000,gateAt:16200,templeAt:25000,surges:[5,8,10.6,12.9,14.9,16.65,18.2,19.55,20.75,21.8,22.75,23.6,24.3].map(seconds=>seconds/31)},
 });
 export const CAPTURE_PROGRESS = .84;
 const BOUNCE_START = .68;
@@ -38,10 +39,10 @@ const mod = (v, m) => (v % m + m) % m;
 export function createSpin(number, wheelStart, ballStart, front = 0.15, special = false) {
   const slot = ORDER.indexOf(number);
   if (slot < 0) throw new Error('Invalid roulette number');
-  const wheelEnd = wheelStart + (special==='matsu'?12:special?9:5)*TAU + mod(front+slot*STEP-wheelStart, TAU);
+  const wheelEnd = wheelStart + (special==='royal'?15:special==='matsu'?12:special?9:5)*TAU + mod(front+slot*STEP-wheelStart, TAU);
   const captureWheel = wheelStart + (wheelEnd-wheelStart)*ease(CAPTURE_PROGRESS);
   const captureAngle = captureWheel - slot*STEP;
-  const ballEnd = captureAngle - TAU * Math.ceil((captureAngle-ballStart)/TAU + (special==='matsu'?16:special?12:7));
+  const ballEnd = captureAngle - TAU * Math.ceil((captureAngle-ballStart)/TAU + (special==='royal'?20:special==='matsu'?16:special?12:7));
   return {number,slot,wheelStart,wheelEnd,ballStart,ballEnd,captureWheel};
 }
 export function sampleSpin(spin, progress) {

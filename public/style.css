@@ -60,3 +60,70 @@ body.special-kick:not([data-screen="title"]) main:after{border-color:#ffb144;box
 @media(prefers-reduced-motion:reduce){body[data-tier="matsu"] #tier-atmosphere:before,body[data-tier="matsu"] #tier-atmosphere i,body[data-tier="matsu"]:not([data-screen="title"]) main:after{animation:none}#tier-atmosphere{transition:none}#tier-atmosphere i{opacity:.45}}
 body[data-tier="matsu"].special-kick #special-banner>b{animation:chance-impact .30s ease-out}body[data-tier="matsu"].special-kick #scene{animation:wheel-impact .30s ease-out}
 @media(prefers-reduced-motion:reduce){body[data-tier="matsu"].special-kick #special-banner>b,body[data-tier="matsu"].special-kick #scene{animation:none}}
+/* 4th — a cinematic journey through the supplied golden temple. */
+.effect-selector button[data-tier="royal"][aria-pressed="true"]{background:linear-gradient(120deg,#fff5c5,#e9ae3b,#fff0ba);color:#51310e;box-shadow:0 0 20px #edba5866}
+body[data-tier="royal"] #tier-atmosphere{background:radial-gradient(ellipse at 35% 35%,#73521e66,transparent 65%),linear-gradient(120deg,#211708,#0c1015 65%,#38220d)}
+body[data-tier="royal"]:not([data-screen="title"]) main:after{border:6px double #efc975;box-shadow:inset 0 0 100px #edb24233}
+body[data-tier="royal"] #tier-atmosphere i{display:block;position:absolute;left:var(--x);top:var(--y);width:var(--size);height:var(--size);background:#ffe6a6;box-shadow:0 0 12px #efb53d;animation:tier-sparkle var(--duration) var(--delay) infinite}
+#fourth-stage{position:fixed;inset:0;z-index:3;pointer-events:none;visibility:hidden;overflow:hidden;background:#130c03 url('video/golden-temple.jpg') center/cover}
+#fourth-video{width:100%;height:100%;object-fit:cover;opacity:.85}
+.fourth-vignette{position:absolute;inset:0;background:linear-gradient(#08070499,transparent 25%,#1c100644 50%,#080603dd),radial-gradient(ellipse,transparent 30%,#170b0866)}
+.fourth-gate{position:absolute;top:0;bottom:0;width:50%;background:linear-gradient(90deg,#090704,#25180a);border:1px solid #d7aa5277;box-shadow:0 0 65px #ffc74844;transition:transform 1.8s cubic-bezier(.2,.7,.2,1)}
+.fourth-gate.left{left:0;border-right:3px solid #e5c67b}.fourth-gate.right{right:0;border-left:3px solid #e5c67b;background:linear-gradient(270deg,#090704,#25180a)}
+.fourth-copy{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 20px 50px;color:#fff3ca;text-shadow:0 3px 20px #160700,0 0 45px #8b4c10}
+.fourth-copy>span{font:clamp(12px,1.4vw,22px) Georgia,serif;letter-spacing:.4em;color:#ffe3a3}.fourth-copy>b{font-family:"Yu Mincho",serif;font-size:clamp(26px,4.5vw,78px);letter-spacing:.12em;margin:28px 0;font-weight:600}.fourth-copy>small{font-size:clamp(12px,1.2vw,18px);letter-spacing:.15em}
+body[data-fourth-phase="gate"] #fourth-stage,body[data-fourth-phase="ascent"] #fourth-stage,body[data-fourth-phase="destiny"] #fourth-stage,body[data-fourth-phase="finale"] #fourth-stage{visibility:visible}
+body[data-fourth-phase="ascent"] .fourth-gate.left,body[data-fourth-phase="destiny"] .fourth-gate.left,body[data-fourth-phase="finale"] .fourth-gate.left{transform:translateX(-105%)}
+body[data-fourth-phase="ascent"] .fourth-gate.right,body[data-fourth-phase="destiny"] .fourth-gate.right,body[data-fourth-phase="finale"] .fourth-gate.right{transform:translateX(105%)}
+body[data-fourth-phase="destiny"] .fourth-copy{background:#130a06aa;transition:background 1s}
+body[data-fourth-phase="finale"] .fourth-copy{visibility:hidden}
+body[data-tier="royal"][data-fourth-phase]:not([data-fourth-phase=""]) header{z-index:8;background:#090c10e8}
+body[data-tier="royal"].grand-reveal #grand-stage{background:radial-gradient(ellipse,#25130577,#120803bb);animation:fourth-finale 7s both}
+body[data-tier="royal"] .grand-content{border:6px double #ffe2a0;background:linear-gradient(110deg,#170b0377,#6b3a1455,#170b0377);padding:35px 20px;box-shadow:0 0 80px #ffd47544,inset 0 0 65px #e1a12922}
+body[data-tier="royal"] .grand-content:before{content:'✦  K & M  ✦';display:block;color:#ffe9ae;font:20px Georgia,serif;letter-spacing:.4em;margin-bottom:20px}
+body[data-tier="royal"] .grand-title{letter-spacing:.22em;color:#fff0bf}
+body[data-tier="royal"] .grand-numbers span{background:linear-gradient(140deg,#f2c25511,#f2c25533,#f2c25508);border:1px solid #ffe59a88;border-radius:50% 50% 5px 5px;box-shadow:inset 0 0 40px #f5c46222,0 10px 30px #0004;animation-duration:1s}
+body[data-tier="royal"] .grand-numbers span:nth-child(2){animation-delay:.35s}body[data-tier="royal"] .grand-numbers span:nth-child(3){animation-delay:.7s}
+body[data-tier="royal"] #celebration span{animation-duration:5.8s}
+@keyframes fourth-finale{0%{opacity:0;filter:brightness(1.8)}9%,91%{opacity:1;filter:brightness(1)}100%{opacity:0}}
+@media(max-width:500px){.effect-selector{gap:1px}.effect-selector button{width:28px}body[data-tier="royal"] .grand-content{padding:25px 8px}body[data-tier="royal"] .grand-content:before{font-size:14px}.fourth-copy>b{letter-spacing:0;font-size:26px}}
+@media(max-height:650px) and (orientation:landscape){body[data-tier="royal"] .grand-content{padding:8px 15px;margin-top:55px}body[data-tier="royal"] .grand-content:before{font-size:12px;margin-bottom:6px}.fourth-copy{padding-top:85px}.fourth-copy>b{margin:15px 0}}
+@media(prefers-reduced-motion:reduce){#fourth-video{display:none}.fourth-gate{transition:none}body[data-tier="royal"] #tier-atmosphere i,body[data-tier="royal"] .grand-numbers span,body[data-tier="royal"].grand-reveal #grand-stage{animation:none}}
+
+/* Keep the live wheel visible behind the invitation; the ascent plays once. */
+body[data-fourth-phase="gate"] #fourth-stage{background:transparent}
+body[data-fourth-phase="gate"] #fourth-video{visibility:hidden}
+body[data-fourth-phase="gate"] .fourth-gate{background:#100b0577}
+body[data-fourth-phase="gate"] .fourth-vignette{background:radial-gradient(ellipse,#09070322,#080603b3)}
+body[data-fourth-phase="gate"] #scene{opacity:.42;filter:blur(2px);animation:none}
+body[data-fourth-phase="gate"] .result-panel,body[data-fourth-phase="gate"] #special-banner{visibility:hidden}
+body[data-fourth-phase="ascent"] .fourth-copy{visibility:hidden}
+
+/* Keep accelerating CHANCE beats visible over the gate until the ascent. */
+body[data-tier="royal"][data-fourth-phase="gate"] #special-banner{visibility:visible;position:fixed;z-index:4;top:130px;width:100%}
+body[data-tier="royal"].special-kick #special-banner>b{animation:chance-impact .30s ease-out}
+@media(max-width:900px) and (orientation:portrait){body[data-tier="royal"][data-fourth-phase="gate"] #special-banner{top:135px}}
+@media(max-height:650px) and (orientation:landscape){body[data-tier="royal"][data-fourth-phase="gate"] #special-banner{top:85px}}
+@media(prefers-reduced-motion:reduce){body[data-tier="royal"].special-kick #special-banner>b{animation:none}}
+
+/* Show the result immediately on the summit frame, without a reveal delay. */
+body[data-tier="royal"] .grand-numbers span,body[data-tier="royal"] .grand-color{animation:none}
+@keyframes fourth-finale{0%,91%{opacity:1;filter:brightness(1)}100%{opacity:0}}
+
+/* The winning number lives at the summit and approaches with the camera. */
+#summit-number{display:none;position:absolute;left:50%;top:var(--height,43%);transform:translate(-50%,-50%) scale(var(--scale,.08333));transform-origin:center;filter:blur(var(--haze,0px));white-space:nowrap;text-align:center;line-height:1;padding:.07em .15em .12em;font-family:Georgia,"Times New Roman",serif;font-size:clamp(160px,min(43vw,49vh),540px);font-weight:900;isolation:isolate}
+#summit-number:before{content:"";position:absolute;inset:8% -3% -2%;z-index:-1;background:linear-gradient(150deg,#fff2af,#8b5917 13%,#fce7a1 17%,#251005 23%,#231009 77%,#bf862e 85%,#ffedb4 90%,#48200b);border:3px solid #ffe8a2;box-shadow:0 10px 0 #301405,0 16px 0 #110903,0 0 45px #ffd96688;clip-path:polygon(4% 0,96% 0,100% 89%,95% 100%,5% 100%,0 89%)}
+#summit-number span{display:block;color:#ffe897;-webkit-text-stroke:2px #ffd587;text-shadow:0 3px #d58c28,0 6px #a95518,0 10px #72300c,0 14px #321307,3px 18px 0 #170904,0 0 25px #ffe79c88;background:linear-gradient(#fffbe0 10%,#ffeb9d 35%,#e8ac36 60%,#fff1b0 82%,#ca8220);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+body[data-fourth-phase="ascent"] #summit-number,body[data-fourth-phase="finale"] #summit-number{display:block}
+body[data-tier="royal"].grand-reveal #grand-stage{background:transparent}
+body[data-tier="royal"] .grand-rays{opacity:.18}
+body[data-tier="royal"] .grand-content{position:absolute;bottom:5vh;width:94%;padding:0;border:0;background:none;box-shadow:none}
+body[data-tier="royal"] .grand-content:before,body[data-tier="royal"] .grand-numbers,body[data-tier="royal"] .grand-kicker{display:none}
+body[data-tier="royal"] .grand-title{font-size:clamp(12px,1.3vw,20px);margin-bottom:8px}
+body[data-tier="royal"] .grand-color{font-size:clamp(26px,3vw,44px)}
+body[data-tier="royal"] .grand-signature{margin-top:8px}
+@media(max-width:500px){#summit-number{font-size:43vw}#summit-number span{-webkit-text-stroke:1px #ffd587;text-shadow:0 3px #a95518,0 6px #321307,0 0 15px #ffde80}body[data-tier="royal"] .grand-content{padding:0;bottom:12vh}}
+@media(max-height:650px) and (orientation:landscape){#summit-number{font-size:43vh}body[data-tier="royal"] .grand-content{bottom:12px;margin:0;padding:0}.grand-signature{display:none}body[data-tier="royal"] .grand-title{font-size:10px;margin-bottom:3px}body[data-tier="royal"] .grand-color{font-size:22px}}
+
+#summit-number{z-index:2}
+body[data-tier="royal"].grand-reveal #celebration{z-index:1;opacity:.65}

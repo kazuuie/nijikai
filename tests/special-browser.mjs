@@ -11,7 +11,7 @@ try{
   await page.clock.install();await page.clock.pauseAt(new Date(Date.now()+1000));
   await page.goto('http://localhost:8000/?v=special');await page.waitForFunction(()=>window.rouletteSnapshot);
   await enterGame(page);
-  assert.deepEqual(await page.locator('#special button').allTextContents(),['1st','2nd','3rd']);
+  assert.deepEqual(await page.locator('#special button').allTextContents(),['1st','2nd','3rd','4th']);
   await mkdir('artifacts',{recursive:true});await page.screenshot({path:'artifacts/title-to-game.png'});
   assert.equal(await page.locator('button[data-tier="ume"]').getAttribute('aria-pressed'),'true');
   await page.locator('button[data-tier="take"]').click();await page.reload();await page.waitForFunction(()=>window.rouletteSnapshot);

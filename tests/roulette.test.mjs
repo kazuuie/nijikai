@@ -33,7 +33,7 @@ test('Unbiased sampler rejects the incomplete tail of the uint32 range',()=>{
 test('Special spins add rotations and settle into every selected pocket',()=>{
   for(const n of ORDER){
     const normal=createSpin(n,0,-.65,.15);
-    for(const tier of [true,'matsu']){
+    for(const tier of [true,'matsu','royal']){
       const special=createSpin(n,0,-.65,.15,tier);
       assert.ok(special.wheelEnd>normal.wheelEnd);
       const end=sampleSpin(special,1);
@@ -42,7 +42,7 @@ test('Special spins add rotations and settle into every selected pocket',()=>{
   }
 });
 test('3rd CHANCE intervals accelerate to a heartbeat cadence before stopping',()=>{
-  assert.deepEqual(Object.values(EFFECTS).map(mode=>mode.label),['1st','2nd','3rd']);
+  assert.deepEqual(Object.values(EFFECTS).map(mode=>mode.label),['1st','2nd','3rd','4th']);
   const times=EFFECTS.matsu.surges.map(t=>t*EFFECTS.matsu.duration);
   assert.ok(Math.abs(times[0]-6800)<1e-8);
   assert.ok(Math.abs(times.at(-1)-times[0]-13950)<1e-8);
@@ -54,4 +54,17 @@ test('3rd CHANCE intervals accelerate to a heartbeat cadence before stopping',()
   assert.ok(times.at(-3)<CAPTURE_PROGRESS*EFFECTS.matsu.duration);
   assert.ok(Math.abs(times.at(-1)-20750)<1e-8);
   assert.ok(times.at(-1)+.95/1.5*1000<EFFECTS.matsu.duration);
+});
+
+test('4th CHANCE accelerates until just before the temple starts',()=>{
+  const mode=EFFECTS.royal;
+  assert.equal(mode.templeAt,25000);assert.equal(mode.duration-mode.templeAt,6000);
+  const times=mode.surges.map(t=>t*mode.duration);
+  let previousGap=Infinity;
+  for(let i=1;i<times.length;i++){
+    const gap=times[i]-times[i-1];assert.ok(gap<previousGap);previousGap=gap;
+  }
+  assert.ok(Math.abs(previousGap-700)<1e-8);
+  assert.ok(times.at(-1)+950/1.5<mode.templeAt);
+  assert.ok(mode.templeAt-times.at(-1)<1000);
 });
