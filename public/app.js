@@ -222,7 +222,7 @@ fourthVideo.addEventListener('error',()=>{fourthVideoFailed=true;});
 fourthVideo.addEventListener('ended',()=>{
   if(active?.tier==='royal'&&fourthPhase==='ascent'&&!document.hidden){cancelAnimationFrame(frame);tick(performance.now());}
 });
-function clearFourth(){fourthPhase='';delete document.body.dataset.fourthPhase;fourthVideo.pause();fourthVideo.currentTime=0;summitNumber.querySelector('span').textContent='';}
+function clearFourth(){fourthPhase='';delete document.body.dataset.fourthPhase;fourthVideo.pause();fourthVideo.currentTime=0;summitNumber.querySelectorAll('span').forEach(span=>{span.textContent='';});}
 function fourthLighting(progress){
   const elapsed=progress*EFFECTS.royal.duration;
   const phase=elapsed<EFFECTS.royal.gateAt?'':elapsed<EFFECTS.royal.templeAt?'gate':'ascent';
@@ -345,7 +345,7 @@ async function spin(){
   clearCelebration();clearGrand();resetLighting();
   specialBanner.querySelector('div').innerHTML=EFFECTS[effectTier].surges.slice(0,5).map(()=>'<i></i>').join('');
   active={spin:createSpin(n,wheelAngle,ballAngle,front,['matsu','royal'].includes(effectTier)?effectTier:specialEnabled),start:performance.now(),special:specialEnabled,tier:effectTier,duration:EFFECTS[effectTier].duration};
-  if(effectTier==='royal'){summitNumber.querySelector('span').textContent=String(n);approachNumber(0);}
+  if(effectTier==='royal'){summitNumber.querySelectorAll('span').forEach(span=>{span.textContent=String(n);});approachNumber(0);}
   sound.start(0,effectTier);
   document.body.classList.remove('special-result','special-suspense');
   document.body.classList.toggle('special-round',specialEnabled);

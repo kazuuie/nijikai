@@ -127,3 +127,11 @@ body[data-tier="royal"] .grand-signature{margin-top:8px}
 
 #summit-number{z-index:2}
 body[data-tier="royal"].grand-reveal #celebration{z-index:1;opacity:.65}
+
+/* Restore the three gold numbers; the existing approach animation stays on the group. */
+#summit-number{width:min(90vw,1440px);padding:0;font-size:clamp(60px,min(16vw,25vh),240px);gap:18px;grid-template-columns:repeat(3,minmax(0,1fr))}
+body[data-fourth-phase="ascent"] #summit-number,body[data-fourth-phase="finale"] #summit-number{display:grid}
+#summit-number:before{display:none}
+#summit-number span{display:flex;align-items:center;justify-content:center;min-width:0;padding:.16em 0 .2em;color:#ffe89b;-webkit-text-fill-color:#ffe89b;-webkit-text-stroke:2px #ffd885;text-shadow:0 5px #c77d27,0 10px #95371e,0 15px #3c1119,0 0 35px #ffba44;background:linear-gradient(140deg,#f2c25511,#f2c25533,#f2c25508);background-clip:border-box;-webkit-background-clip:border-box;border:1px solid #ffe59a88;border-radius:50% 50% 5px 5px;box-shadow:inset 0 0 40px #f5c46222,0 10px 30px #0004}
+@media(max-width:500px){#summit-number{gap:5px;font-size:19vw}#summit-number span{-webkit-text-stroke:1px #ffd885;text-shadow:0 3px #c77d27,0 6px #95371e,0 0 20px #ffba44}}
+@media(max-height:650px) and (orientation:landscape){#summit-number{font-size:25vh;gap:10px}}

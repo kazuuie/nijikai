@@ -47,7 +47,7 @@ try{
  await page.locator('#fourth-video').evaluate(v=>new Promise(resolve=>{v.addEventListener('seeked',resolve,{once:true});v.currentTime=v.duration*.8;}));
  await page.clock.fastForward(2100);
  assert.equal(await page.locator('#summit-number').isVisible(),true);
- assert.equal(await page.locator('#summit-number span').textContent(),'17');
+ assert.deepEqual(await page.locator('#summit-number span').allTextContents(),['17','17','17']);
  const approaching=await page.locator('#summit-number').boundingBox();
  assert.ok(approaching.y<1080*.4);
  await page.screenshot({path:'artifacts/fourth-ascent.png'});
@@ -61,7 +61,7 @@ try{
  await page.locator('#fourth-video').evaluate(v=>new Promise((resolve,reject)=>{v.addEventListener('ended',resolve,{once:true});v.currentTime=v.duration-.05;v.play().catch(reject);}));
  await page.clock.fastForward(100);
  const result=await page.evaluate(()=>rouletteSnapshot());assert.equal(result.number,17);assert.equal(result.pocket,17);assert.equal(result.spinning,false);assert.equal(result.audio.flourishCount,1);
- assert.equal(await page.locator('#summit-number span').textContent(),String(result.number));
+ assert.deepEqual(await page.locator('#summit-number span').allTextContents(),Array(3).fill(String(result.number)));
  assert.deepEqual(await page.locator('.grand-numbers span').allTextContents(),['17','17','17']);assert.equal(await page.locator('#celebration span').count(),260);
  await page.locator('#mute').click();assert.equal((await page.evaluate(()=>rouletteSnapshot())).audio.muted,true);
  for(const [width,height] of [[1920,1080],[390,844],[320,720],[844,390]]){
